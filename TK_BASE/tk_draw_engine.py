@@ -37,8 +37,8 @@ colors2 = ["dark slate gray","tomato","chartreuse","yellow","royal blue","magent
 
 
 curchar = ""
-curfg = "" #16
-curbg = "" #8
+curfg = "orange" #16
+curbg = "tomato" #8
 
 class App:
 	def __init__(self,master):
@@ -85,17 +85,30 @@ class App:
 		#Action: check if right tool otherwise unpressed
 	
 	def setCharacters(self,charactersFrame):
+		global curbg
+		global curfg
+		
 		label = Tk.Label(charactersFrame,text="Foreground")
 		label.pack(side=Tk.TOP)
 		fg1 = Tk.Frame(charactersFrame)
 		fg1.pack(side=Tk.TOP)
+		
+		def gensetfg(c):
+			def setfg():global curfg; curfg=c; 
+			return setfg
+			
+		def gensetbg(c):
+			def setbg():global curbg; curbg=c; 
+			return setbg
+		
 		for c in colors:
-			b = Tk.Button(fg1,background=c)
+			print("Curfg:",curfg,"Put c",c)
+			b = Tk.Button(fg1,background=c,command=gensetfg(c))
 			b.pack(side=Tk.LEFT)
 		fg2 = Tk.Frame(charactersFrame)
 		fg2.pack(side=Tk.TOP)
 		for c in colors2:
-			b = Tk.Button(fg2,background=c)
+			b = Tk.Button(fg2,background=c,command=gensetfg(c))
 			b.pack(side=Tk.LEFT)
 		
 		label = Tk.Label(charactersFrame,text="Background")
@@ -103,7 +116,7 @@ class App:
 		bg = Tk.Frame(charactersFrame)
 		bg.pack(side=Tk.TOP)
 		for c in colors:
-			b = Tk.Button(bg,background=c)
+			b = Tk.Button(bg,background=c,command=gensetbg(c))
 			b.pack(side=Tk.LEFT)
 			
 		label = Tk.Label(charactersFrame,text="Colors")
@@ -171,7 +184,7 @@ class drawingArea():
 		self.drawCanvas = canvas
 		self.dc = canvas
 		for i in range(min(CH-2,CW-2,25)):
-			self.dc.putchar(i,i,chr(ord("a")+i),"red","blue")
+			self.dc.putchar(i,i,chr(ord("a")+i),"white","red")
 		
 	def move(self,x,y):
 		self.x=x
@@ -180,7 +193,8 @@ class drawingArea():
 		pass
 	def click(self,x,y,tool):
 		if(tool==0):
-			self.dc.putchar(x,y,choice("▀▄█░▒▓"),"black","white")
+			print("FG:",curfg,"BG:",curbg)
+			self.dc.putchar(x,y,choice("▀▄█░▒▓"),curfg,curbg)
 		pass
 
 def colorConvert(string):
