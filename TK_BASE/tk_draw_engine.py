@@ -100,24 +100,79 @@ class App:
 			command = changeTool("Point"),state="disabled")
 		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
 		self.allTools.append(self.drawTool)
+		#when click releasing, put selected character
+		#click dragging: lines characters?
+		#depending on drag direction and distance, different "hard to reach" characters
+		#right click copies characters
+		#right drag: selection
+		#hover: can type
+		
+		#TOOL: pixel-mode
+		self.drawTool = Tk.Button(toolsFrame,text="Pixel", 
+			command = changeTool("Pixel"))
+		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
+		self.allTools.append(self.drawTool)
+		#Drag for up/down half pixels, or for tone pixels (sides)
+		#Right click behaves like Point
+		
+		self.drawTool = Tk.Button(toolsFrame,text="Line", 
+			command = changeTool("Line"))
+		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
+		self.allTools.append(self.drawTool)
+		#when dragging, draw lines diags, because they are difficult to reach normally?
 		
 		self.drawTool = Tk.Button(toolsFrame,text="Select", 
 			command = changeTool("Select"))
 		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
 		self.allTools.append(self.drawTool)
+		#same as Point right click, but with left click and more options?
 		
 		self.drawTool = Tk.Button(toolsFrame,text="Text", 
 			command = changeTool("Text"))
 		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
 		self.allTools.append(self.drawTool)
+		#when on, advances automatically. Should be a switch instead of a tool?
 		
 		self.drawTool = Tk.Button(toolsFrame,text="Recolor", 
 			command = changeTool("Recolor"))
 		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
 		self.allTools.append(self.drawTool)
+		#when on, typing a character only changes the character and not the color
+		#and click releasing changes the color but not the character
+		#and click dragging changes the color as well instead of doing lines
 		
 		#Action: check if right tool otherwise unpressed
-	
+		
+		
+		#Click Release:
+		#-Point (current char)
+		#-Recolor (current color)
+		#-Start text?
+		#Cursor mode: set cursor
+		
+		#Click Drag
+		#-Line chars
+		#-Pixel chars
+		#-Left select (shapes?)
+		#-Recolor (current color)
+		#-Box (char mode, rectangle1, rectangle2)
+		
+		#Type
+		#Cursor mode: type at cursor
+		#Text mode: type and advance mode
+		#Default: put char
+		#Recolor: replace only char
+		
+		#Right click
+		#-Select copy of char
+		
+		#Right drag:
+		#-Instant selection
+		#-Recolor: replace only char? Or instant selection as well?
+		
+		
+		
+		
 	def setCharacters(self,charactersFrame):
 		global curbg
 		global curfg
@@ -218,6 +273,16 @@ class canvasManager():
 			self.getEvent(event.x,event.y)
 		canvas.bind("<Button-1>", clickevent)
 		
+		def mmovevent(x,y):
+			def mmove(event):
+				self.warpMouse(x,y)
+			return mmove
+		canvas.bind("<Left>", mmovevent(-1,0))
+		canvas.bind("<Right>", mmovevent(1,0))
+		canvas.bind("<Up>", mmovevent(0,-1))
+		canvas.bind("<Down>", mmovevent(0,1))
+		
+		
 		def updatemousepos(event):
 			self.canvas_mx = event.x;
 			self.canvas_my = event.y;
@@ -226,12 +291,25 @@ class canvasManager():
 		
 		def typeachar(event):
 			if(event.char!=""):
+				print(event.keysym)
+				char = event.char;
+				if(event.keysym=="BackSpace" or event.keysym=="Delete"):
+					char=" "
 				x=event.x
 				y=event.y
+				
+				if(event.keysym=="BackSpace"):
+					x-=fw
 				if(x>0 and y>0 and x<cw*fw and y<ch*fh):
-					self.listener.typechar(int(x/fw),int(y/fh),event.char)
+					self.listener.typechar(int(x/fw),int(y/fh),char)
 					if(tool=="Text"):
-						self.warpMouse(1,0)
+						if(event.keysym=="BackSpace"):
+							self.warpMouse(-1,0)
+						elif(event.keysym=="Return"):
+							self.warpMouse(-1,1)
+						
+						else:
+							self.warpMouse(1,0)
 		canvas.bind("<Key>",typeachar)
 		
 		
