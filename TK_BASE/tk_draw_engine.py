@@ -40,9 +40,13 @@ curchar = ""
 curfg = "orange" #16
 curbg = "tomato" #8
 
+tool = "Point"
+
 class App:
 	def __init__(self,master):
 		
+		self.currentFGButton = None
+		self.currentBGButton = None
 		#self.dupeImage = Tk.PhotoImage(file=os.path.join("Darpteam","Code","GUIELEM","duplicate.gif"))
 		#self.dupeImage = Tk.PhotoImage(file=os.path.join("..","GUIELEM","duplicate.gif"))
 
@@ -77,8 +81,38 @@ class App:
 		self.drawing_area = drawingArea(self.canvas_drawing)
 		self.canvas_drawing.addListerner(self.drawing_area)
 		
+		
 	def setTools(self,toolsFrame):
-		self.drawTool = Tk.Button(toolsFrame,text="Draw")
+		def changeTool(newtool):
+			def ct():
+				global tool
+				tool= newtool
+				for button in self.allTools:
+					if(button.cget("text")==tool):
+						button.config(state="disabled")
+						print(tool,"is active")
+					else:
+						button.config(state="normal")
+						
+						
+			return ct
+		self.drawTool = Tk.Button(toolsFrame,text="Point", 
+			command = changeTool("Point"),state="disabled")
+		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
+		self.allTools.append(self.drawTool)
+		
+		self.drawTool = Tk.Button(toolsFrame,text="Select", 
+			command = changeTool("Select"))
+		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
+		self.allTools.append(self.drawTool)
+		
+		self.drawTool = Tk.Button(toolsFrame,text="Text", 
+			command = changeTool("Text"))
+		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
+		self.allTools.append(self.drawTool)
+		
+		self.drawTool = Tk.Button(toolsFrame,text="Recolor", 
+			command = changeTool("Recolor"))
 		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
 		self.allTools.append(self.drawTool)
 		
@@ -93,22 +127,38 @@ class App:
 		fg1 = Tk.Frame(charactersFrame)
 		fg1.pack(side=Tk.TOP)
 		
-		def gensetfg(c):
-			def setfg():global curfg; curfg=c; 
+		def gensetfg(c,b):
+			def setfg():
+				global curfg; 
+				curfg=c; 
+				if(self.currentFGButton!=None):
+					self.currentFGButton.config(state="normal",relief="raised")
+				self.currentFGButton=b
+				b.config(state="disabled",relief="ridge")
 			return setfg
 			
-		def gensetbg(c):
-			def setbg():global curbg; curbg=c; 
+		def gensetbg(c,b):
+			def setbg():
+				global curbg; 
+				curbg=c; 
+				if(self.currentBGButton!=None):
+					self.currentBGButton.config(state="normal",relief="raised")
+				self.currentBGButton=b
+				b.config(state="disabled",relief="ridge")
 			return setbg
 		
 		for c in colors:
 			print("Curfg:",curfg,"Put c",c)
-			b = Tk.Button(fg1,background=c,command=gensetfg(c))
+			b = Tk.Button(fg1,background=c,borderwidth=5)
+			b.config(command = gensetfg(c,b))
 			b.pack(side=Tk.LEFT)
+			if(c=="gainsboro"):
+				b.invoke()
 		fg2 = Tk.Frame(charactersFrame)
 		fg2.pack(side=Tk.TOP)
 		for c in colors2:
-			b = Tk.Button(fg2,background=c,command=gensetfg(c))
+			b = Tk.Button(fg2,background=c,borderwidth=5)
+			b.config(command = gensetfg(c,b))
 			b.pack(side=Tk.LEFT)
 		
 		label = Tk.Label(charactersFrame,text="Background")
@@ -116,9 +166,13 @@ class App:
 		bg = Tk.Frame(charactersFrame)
 		bg.pack(side=Tk.TOP)
 		for c in colors:
-			b = Tk.Button(bg,background=c,command=gensetbg(c))
+			b = Tk.Button(bg,background=c,borderwidth=5)
+			b.config(command = gensetbg(c,b))
 			b.pack(side=Tk.LEFT)
 			
+			if(c=="black"):
+				b.invoke()
+				
 		label = Tk.Label(charactersFrame,text="Colors")
 		label.pack(side=Tk.TOP)
 		col = Tk.Frame(charactersFrame)
@@ -131,6 +185,9 @@ class App:
 class canvasManager():
 	#Hides the real canvas
 	def __init__(self,canvas):
+		self.canvas_mx = 0;
+		self.canvas_my = 0;
+		
 		self.canvas = canvas
 		self.c = canvas
 		self.wv = FW
@@ -148,12 +205,39 @@ class canvasManager():
 				self.bg[i][j] = self.c.create_rectangle(bbox,outline="",fill="black")
 				self.fg[i][j] = self.c.create_text(p1,anchor="nw",font = monofont)
 				
-				
-		def callback(event):
-			self.getEvent(event.x,event.y)
-		canvas.bind("<Button-1>", callback)
+		self.selectx = 0;
+		self.selecty = 0;
+		self.selection = []
+		self.selecting = False;
+		self.typing = False;
 		
-	def putchar(self,x,y,char=None,bg=None,fg=None):
+		canvas.bind("<Enter>", lambda event: canvas.focus_set())
+				
+		def clickevent(event):
+			self.canvas.focus_set()
+			self.getEvent(event.x,event.y)
+		canvas.bind("<Button-1>", clickevent)
+		
+		def updatemousepos(event):
+			self.canvas_mx = event.x;
+			self.canvas_my = event.y;
+		canvas.bind("<Motion>", updatemousepos)
+		#root.winfo_pointerxy()
+		
+		def typeachar(event):
+			if(event.char!=""):
+				x=event.x
+				y=event.y
+				if(x>0 and y>0 and x<cw*fw and y<ch*fh):
+					self.listener.typechar(int(x/fw),int(y/fh),event.char)
+					if(tool=="Text"):
+						self.warpMouse(1,0)
+		canvas.bind("<Key>",typeachar)
+		
+		
+		
+		
+	def putchar(self,x,y,char=None,fg=None,bg=None):
 		index = self.fg[x][y]
 		if(fg!=None):
 			self.c.itemconfig(index, fill=fg)
@@ -164,7 +248,7 @@ class canvasManager():
 		index = self.bg[x][y]
 		if(bg!=None):
 			self.c.itemconfig(index, fill=bg)
-			
+	
 	def getEvent(self,x,y):
 		print("received event in",x,y)
 		#transforms the event in X, Y, tool
@@ -176,7 +260,12 @@ class canvasManager():
 		
 	def addListerner(self,listener):
 		self.listener = listener;
-			
+		
+	def warpMouse(self,x,y):
+		dx = x*fw
+		dy = y*fh
+		self.canvas.event_generate('<Motion>', warp=True, x=self.canvas_mx+dx,
+			y=self.canvas_my+dy)
 class drawingArea():
 	#Just the areas, like my old ones
 	def __init__(self,canvas):
@@ -196,6 +285,10 @@ class drawingArea():
 			print("FG:",curfg,"BG:",curbg)
 			self.dc.putchar(x,y,choice("▀▄█░▒▓"),curfg,curbg)
 		pass
+		
+	def typechar(self,x,y,char):
+		if(char!=""):
+			self.dc.putchar(x,y,char,curfg,curbg)
 
 def colorConvert(string):
 	#receives an \0xetc. code,
