@@ -17,9 +17,9 @@ for i in sorted(font.families()):
 		print(i);
 		monofonts.append(i)
 		
-fh = 16
-monofont = font.Font(family="Ubuntu Mono",size = -fh)
-fw = monofont.measure(" ")
+fh = 20
+monofont = font.Font(family="lucida console",size = -fh)
+fw = monofont.measure("M")
 FH=fh
 FW=fw
 DRAWABLE_CHARACTERS = u"""☺☻♥♦♣♠•○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼ !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~⌂ ¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿıƒ‗─│┌┐└┘├┤┬┴┼═║╔╗╚╝╠╣╦╩╬▀▄█░▒▓■   """
@@ -162,6 +162,7 @@ class App:
 		#Text mode: type and advance mode
 		#Default: put char
 		#Recolor: replace only char
+
 		
 		#Right click
 		#-Select copy of char
@@ -244,6 +245,7 @@ class canvasManager():
 		self.canvas_my = 0;
 		
 		self.canvas = canvas
+		self.canvas.config(highlightthickness=0)
 		self.c = canvas
 		self.wv = FW
 		self.hv = FH
@@ -252,12 +254,12 @@ class canvasManager():
 		wv = self.wv
 		self.bg = [[None]*CH for i in range(CW)]
 		self.fg = [[None]*CH for i in range(CW)]
-		self.c.create_rectangle(((0,0),(CW*FW,CH*FH)),fill="")
+		#self.c.create_rectangle(((0,0),(CW*FW,CH*FH)),fill="red")
 		for i in range(CW):
 			for j in range(CH):
 				p1 = (i*wv,j*hv)
 				bbox = (p1,(i*wv+wv,j*hv+hv))
-				self.bg[i][j] = self.c.create_rectangle(bbox,outline="",fill="black")
+				self.bg[i][j] = self.c.create_rectangle(bbox,outline="dark slate gray",width=0,fill="black")
 				self.fg[i][j] = self.c.create_text(p1,anchor="nw",font = monofont)
 				
 		self.selectx = 0;
