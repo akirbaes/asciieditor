@@ -66,7 +66,7 @@ class App:
 		self.setCharacters(self.charactersFrame)
 		
 		self.toolsFrame = Tk.Frame(mainFrame)
-		self.toolsFrame.pack(side=Tk.TOP)
+		self.toolsFrame.pack(side=Tk.TOP,fill=Tk.BOTH,expand=True)
 		self.setTools(self.toolsFrame)
 
 		self.displayFrame = Tk.Frame(mainFrame)
@@ -127,10 +127,6 @@ class App:
 		self.allTools.append(self.drawTool)
 		#same as Point right click, but with left click and more options?
 		
-		self.drawTool = Tk.Button(toolsFrame,text="Text", 
-			command = changeTool("Text"))
-		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
-		self.allTools.append(self.drawTool)
 		#when on, advances automatically. Should be a switch instead of a tool?
 		
 		self.drawTool = Tk.Button(toolsFrame,text="Recolor", 
@@ -172,6 +168,47 @@ class App:
 		#-Recolor: replace only char? Or instant selection as well?
 		
 		
+		highlight = Tk.Label(toolsFrame,text="[◙]")
+		highlight.pack(side=Tk.RIGHT,anchor = "e")
+		def setAllColor(event):
+			self.canvas_drawing.showAllColors(True)
+		def unsetAllColor(event):
+			self.canvas_drawing.showAllColors(False)
+		highlight.bind("<Enter>", setAllColor)
+		highlight.bind("<Leave>", unsetAllColor)
+		
+		highlight = Tk.Label(toolsFrame,text="[a]")
+		highlight.pack(side=Tk.RIGHT,anchor = "e")
+		def setAllChars(event):
+			self.canvas_drawing.showAllChars(True)
+		def unsetAllChars(event):
+			self.canvas_drawing.showAllChars(False)
+		highlight.bind("<Enter>", setAllChars)
+		highlight.bind("<Leave>", unsetAllChars)
+
+		self.gridset = False
+		self.gridbutton = Tk.Button(toolsFrame,text="Grid")
+		def showgrid():
+			self.gridset = not self.gridset
+			self.canvas_drawing.showOutlines(self.gridset)
+			if(self.gridset):
+				self.gridbutton.config(relief=Tk.SUNKEN)
+			else:
+				self.gridbutton.config(relief=Tk.RAISED)
+		self.gridbutton.config(command = showgrid)
+		self.gridbutton.pack(side=Tk.RIGHT,anchor = "w")
+		
+		self.textset = False
+		self.textbutton = Tk.Button(toolsFrame,text="Text")
+		def textMode():
+			self.textset = not self.textset
+			self.canvas_drawing.textmode(self.textset)
+			if(self.textset):
+				self.textbutton.config(relief=Tk.SUNKEN)
+			else:
+				self.textbutton.config(relief=Tk.RAISED)
+		self.textbutton.config(command = textMode)
+		self.textbutton.pack(side=Tk.RIGHT,anchor = "w")
 		
 		
 	def setCharacters(self,charactersFrame):
@@ -243,6 +280,9 @@ class canvasManager():
 	def __init__(self,canvas):
 		self.canvas_mx = 0;
 		self.canvas_my = 0;
+		self.colorsbackup = []
+		self.charsbackup = []
+		self.istextmode = False
 		
 		self.canvas = canvas
 		self.canvas.config(highlightthickness=0)
@@ -284,7 +324,6 @@ class canvasManager():
 		canvas.bind("<Up>", mmovevent(0,-1))
 		canvas.bind("<Down>", mmovevent(0,1))
 		
-		
 		def updatemousepos(event):
 			self.canvas_mx = event.x;
 			self.canvas_my = event.y;
@@ -297,14 +336,17 @@ class canvasManager():
 				char = event.char;
 				if(event.keysym=="BackSpace" or event.keysym=="Delete"):
 					char=" "
+				if(event.keysym=="Return"):
+					char = None
 				x=event.x
 				y=event.y
 				
 				if(event.keysym=="BackSpace"):
 					x-=fw
 				if(x>0 and y>0 and x<cw*fw and y<ch*fh):
-					self.listener.typechar(int(x/fw),int(y/fh),char)
-					if(tool=="Text"):
+					if(event.keysym!="Return"):
+						self.listener.typechar(int(x/fw),int(y/fh),char)
+					if(self.istextmode):
 						if(event.keysym=="BackSpace"):
 							self.warpMouse(-1,0)
 						elif(event.keysym=="Return"):
@@ -314,9 +356,41 @@ class canvasManager():
 							self.warpMouse(1,0)
 		canvas.bind("<Key>",typeachar)
 		
+	def textmode(self,textset):
+		self.istextmode = textset
 		
+	def showOutlines(self,do):
+		for line in self.bg:
+			for elem in line:
+				self.c.itemconfig(elem, width=do)
+	
+	def showAllChars(self,do):
+		if(do and len(self.colorsbackup)==0) or ((not do) and len(self.colorsbackup)!=0):
+			for i,line in enumerate(self.fg):
+				for j,fgpart in enumerate(line):
+					bgpart = self.bg[i][j]
+					if(do):
+						col = self.c.itemcget(fgpart, "fill"), self.c.itemcget(bgpart, "fill")
+						self.colorsbackup.append(col)
+						self.c.itemconfig(fgpart, fill="white")
+						self.c.itemconfig(bgpart, fill="black")
+					else:
+						col = self.colorsbackup.pop(0)
+						self.c.itemconfig(fgpart, fill=col[0])
+						self.c.itemconfig(bgpart, fill=col[1])
 		
-		
+	def showAllColors(self,do):
+		if(do and len(self.charsbackup)==0) or ((not do) and len(self.charsbackup)!=0):
+			for line in self.fg:
+				for elem in line:
+					if(do):
+						char = self.c.itemcget(elem, "text")
+						self.charsbackup.append(char)
+						self.c.itemconfig(elem, text="•")
+					else:
+						char = self.charsbackup.pop(0)
+						self.c.itemconfig(elem, text=char)
+						
 	def putchar(self,x,y,char=None,fg=None,bg=None):
 		index = self.fg[x][y]
 		if(fg!=None):
@@ -382,4 +456,4 @@ root.mainloop()
 try:
 	root.destroy() #if it wasn't already
 except:
-	exit() #quit anyway
+	exit(1) #quit anyway
