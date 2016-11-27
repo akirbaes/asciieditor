@@ -4,9 +4,11 @@
 try:
 	import Tkinter as Tk
 	from Tkinter import font
+	from Tkinter import tkFileDialog as FileDialog
 except ImportError:
 	import tkinter as Tk
 	from tkinter import font
+	from tkinter import filedialog as FileDialog
 from random import choice
 
 root = Tk.Tk()
@@ -14,7 +16,7 @@ monofonts = []
 
 for i in sorted(font.families()):
 	if "mono" in i.lower():
-		print(i);
+		#print(i);
 		monofonts.append(i)
 		
 fh = 20
@@ -71,9 +73,7 @@ class App:
 
 		self.displayFrame = Tk.Frame(mainFrame)
 		self.displayFrame.pack(side=Tk.LEFT)
-		
-
-		
+			
 		self.canvas = Tk.Canvas(self.displayFrame, width=FW*CW, height=FH*CH)
 		self.canvas.pack()
 		
@@ -81,6 +81,58 @@ class App:
 		self.drawing_area = drawingArea(self.canvas_drawing)
 		self.canvas_drawing.addListerner(self.drawing_area)
 		
+		self.setMenu(master)
+		
+	def setMenu(self,root):
+		self.menubar = Tk.Menu(root)
+		###http://tkinter.unpythonic.net/wiki/tkFileDialog
+		def saveFile():
+			filename = FileDialog.asksaveasfilename() #only receives the filename
+		def saveAs():
+			pass
+			#file = FileDialog.asksaveasfile(mode='w') #already creates it
+		def open():
+			filename = FileDialog.askopenfilename() #plural is possible
+			if(filename in self.recent_files):
+				self.recent_files.remove(filename)
+				self.recent_files.append("")
+			self.recent_files = [filename]+self.recent_files[:-1]
+			#file = FileDialog.askopenfile(mode='r')
+			#filename = FileDialog.askopenfilename() #plural is possible
+		self.recent_files=[""]*15
+		self.menu_recent=[]
+		def openRecent(number):
+			def openR():
+				filename = self.recent_files[number]
+				#print("OpenR",number,"'"+filename+"'")
+				if(filename!=""):
+					if(filename in self.recent_files):
+						self.recent_files.remove(filename)
+						self.recent_files.append("")
+					self.recent_files = [filename]+self.recent_files[:-1]
+
+			return openR
+			
+		self.menubar.add_command(label="New")
+		self.menubar.add_command(label="Open", command=open)
+		
+		def updatem():
+			for i in range(15):
+				self.recentmenu.entryconfigure(i, label="["+str(i).zfill(2)+"]: "+(self.recent_files[i] or "-- No entry here --"))
+		
+		self.recentmenu = Tk.Menu(self.menubar, tearoff=0, postcommand=updatem)
+		for i in range(15):
+			self.recentmenu.add_command(command=openRecent(i))
+		#updatem()
+		self.menubar.add_cascade(label="▼Open recent",menu=self.recentmenu)
+		
+		self.menubar.add_command(label="Save", command=saveFile)
+		self.menubar.add_command(label="Save as", command=saveAs)
+		self.menubar.add_separator()
+		self.menubar.add_command(label="Quit", command=root.quit)
+
+		# display the menu
+		root.config(menu=self.menubar)
 		
 	def setTools(self,toolsFrame):
 		def changeTool(newtool):
@@ -90,7 +142,7 @@ class App:
 				for button in self.allTools:
 					if(button.cget("text")==tool):
 						button.config(state="disabled")
-						print(tool,"is active")
+						#print(tool,"is active")
 					else:
 						button.config(state="normal")
 						
@@ -241,7 +293,7 @@ class App:
 			return setbg
 		
 		for c in colors:
-			print("Curfg:",curfg,"Put c",c)
+			#print("Curfg:",curfg,"Put c",c)
 			b = Tk.Button(fg1,background=c,borderwidth=5)
 			b.config(command = gensetfg(c,b))
 			b.pack(side=Tk.LEFT)
@@ -332,7 +384,7 @@ class canvasManager():
 		
 		def typeachar(event):
 			if(event.char!=""):
-				print(event.keysym)
+				#print(event.keysym)
 				char = event.char;
 				if(event.keysym=="BackSpace" or event.keysym=="Delete"):
 					char=" "
@@ -436,7 +488,7 @@ class drawingArea():
 		pass
 	def click(self,x,y,tool):
 		if(tool==0):
-			print("FG:",curfg,"BG:",curbg)
+			#print("FG:",curfg,"BG:",curbg)
 			self.dc.putchar(x,y,choice("▀▄█░▒▓"),curfg,curbg)
 		pass
 		
