@@ -11,9 +11,22 @@ except ImportError:
 	from tkinter import filedialog as FileDialog
 from random import choice
 from os import name as osname
+import os
+import time
 
 root = Tk.Tk()
 monofonts = []
+
+def gen_time():
+	l = time.localtime(time.time())
+	return (str(l.tm_year)+"_"+\
+		(str(l.tm_yday).zfill(3))+"_"+\
+		(str(l.tm_hour).zfill(2))+\
+		(str(l.tm_min).zfill(2))+\
+		(str(l.tm_sec).zfill(2)))
+
+	
+savename = "newfile_"+gen_time()+".ascii.txt"
 
 for i in sorted(font.families()):
 	if "mono" in i.lower():
@@ -89,32 +102,45 @@ class App:
 		self.setMenu(master)
 		
 	def setMenu(self,root):
+		
 		self.menubar = Tk.Menu(root)
+		def pushName(filename):
+			if(filename):
+				if(filename in self.recent_files):
+					self.recent_files.remove(filename)
+					self.recent_files.append("")
+				self.recent_files = [filename]+self.recent_files[:-1]
 		###http://tkinter.unpythonic.net/wiki/tkFileDialog
 		def saveFile():
-			filename = FileDialog.asksaveasfilename() #only receives the filename
+			self.saveDrawing()
+			pushName(savename)
 		def saveAs():
-			pass
+			global savename
+			filename =FileDialog.asksaveasfilename(defaultextension=".ascii.txt",filetypes=(("Ascii Text",".ascii.txt"),)) #only receives the filename
+			if(filename):
+				savename = filename
+				self.saveDrawing()
+				pushName(savename)
 			#file = FileDialog.asksaveasfile(mode='w') #already creates it
 		def open():
-			filename = FileDialog.askopenfilename() #plural is possible
-			if(filename in self.recent_files):
-				self.recent_files.remove(filename)
-				self.recent_files.append("")
-			self.recent_files = [filename]+self.recent_files[:-1]
+			global savename
+			filename = FileDialog.askopenfilename(defaultextension=".ascii.txt",filetypes=(("Ascii Text",".ascii.txt"),)) #plural is possible
+			if(filename):
+				pushName(filename)
+				self.recent_files = [filename]+self.recent_files[:-1]
+				savename = filename
 			#file = FileDialog.askopenfile(mode='r')
 			#filename = FileDialog.askopenfilename() #plural is possible
 		self.recent_files=[""]*15
 		self.menu_recent=[]
 		def openRecent(number):
 			def openR():
+				global savename
 				filename = self.recent_files[number]
 				#print("OpenR",number,"'"+filename+"'")
 				if(filename!=""):
-					if(filename in self.recent_files):
-						self.recent_files.remove(filename)
-						self.recent_files.append("")
-					self.recent_files = [filename]+self.recent_files[:-1]
+					pushName(filename)
+					savename = filename
 
 			return openR
 			
@@ -138,6 +164,16 @@ class App:
 
 		# display the menu
 		root.config(menu=self.menubar)
+	def saveDrawing(self):
+		#savename
+		#mode color or not
+		data = self.canvas_drawing.repr_data()
+		saveplace = open(savename,"w")
+		saveplace.write(data)
+		saveplace.close()
+	
+	def loadDrawing(self):
+		pass
 		
 	def setTools(self,toolsFrame):
 		def changeTool(newtool):
@@ -331,9 +367,13 @@ class App:
 			l = Tk.Label(col,text=c)
 			l.grid(column=int(i%16),row=int(i/16))
 
-
+	def set_savename(self):
+		pass
+	def savefile(self):
+		pass
 class canvasManager():
 	#Hides the real canvas
+	#For now it also holds the chars and colors data, but I have to separate view from data later on...
 	def __init__(self,canvas):
 		self.canvas_mx = 0;
 		self.canvas_my = 0;
@@ -461,7 +501,7 @@ class canvasManager():
 			self.c.itemconfig(index, fill=bg)
 	
 	def getEvent(self,x,y):
-		print("received event in",x,y)
+		#print("received event in",x,y)
 		#transforms the event in X, Y, tool
 		#and sends it to drawingArea which will send it back
 		if(self.listener!=None):
@@ -477,6 +517,19 @@ class canvasManager():
 		dy = y*fh
 		self.canvas.event_generate('<Motion>', warp=True, x=self.canvas_mx+dx,
 			y=self.canvas_my+dy)
+			
+	def repr_data(self,colors=False):
+		#to remade for drawingArea instead next [TODO]
+		#to add ansi color codes [TODO]
+		datatext = ""
+		for i in range(CW):
+			for j in range(CH):
+				elem = self.fg[i][j]
+				char = self.c.itemcget(elem, "text") or " "
+				datatext+=char
+			datatext+="\n"
+		return datatext
+	
 class drawingArea():
 	#Just the areas, like my old ones
 	def __init__(self,canvas):
