@@ -10,6 +10,7 @@ except ImportError:
 	from tkinter import font
 	from tkinter import filedialog as FileDialog
 from random import choice
+from os import name as osname
 
 root = Tk.Tk()
 monofonts = []
@@ -18,9 +19,13 @@ for i in sorted(font.families()):
 	if "mono" in i.lower():
 		#print(i);
 		monofonts.append(i)
-		
-fh = 20
-monofont = font.Font(family="lucida console",size = -fh)
+
+if(osname == "nt"):
+	fh = 20
+	monofont = font.Font(family="lucida console",size = -fh)
+else:
+	fh = 16
+	monofont = font.Font(family="Ubuntu Mono",size = -fh)
 fw = monofont.measure("M")
 FH=fh
 FW=fw
