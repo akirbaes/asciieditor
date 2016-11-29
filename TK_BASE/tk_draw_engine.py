@@ -241,6 +241,12 @@ class App:
 			command = changeTool("Box"))
 		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
 		self.allTools.append(self.drawTool)
+		
+		
+		self.drawTool = Tk.Button(toolsFrame,text="Box2", 
+			command = changeTool("Box2"))
+		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
+		self.allTools.append(self.drawTool)
 		#when on, typing a character only changes the character and not the color
 		#and click releasing changes the color but not the character
 		#and click dragging changes the color as well instead of doing lines
@@ -336,17 +342,18 @@ class App:
 		
 		
 		modeFrame = Tk.Frame(toolsFrame)
-		self.nochar = Tk.IntVar()
-		self.nofg = Tk.IntVar()
-		self.nobg = Tk.IntVar()
-		self.nochar.set(1)
-		self.nofg.set(1)
-		self.nobg.set(1)
-		fgm = Tk.Checkbutton(modeFrame,text="[FG]",var=self.nofg)
+		global dochar,dofg,dobg
+		dochar = Tk.IntVar()
+		dofg = Tk.IntVar()
+		dobg = Tk.IntVar()
+		dochar.set(1)
+		dofg.set(1)
+		dobg.set(1)
+		fgm = Tk.Checkbutton(modeFrame,text="[FG]",var=dofg)
 		CreateToolTip(fgm,"Modify Foreground color when drawing")
-		bgm = Tk.Checkbutton(modeFrame,text="[BG]",var=self.nobg)
+		bgm = Tk.Checkbutton(modeFrame,text="[BG]",var=dobg)
 		CreateToolTip(bgm,"Modify Background color when drawing")
-		chm = Tk.Checkbutton(modeFrame,text="[Ch]",var=self.nochar)
+		chm = Tk.Checkbutton(modeFrame,text="[Ch]",var=dochar)
 		CreateToolTip(chm,"Modify Characters when drawing")
 		fgm.select()
 		bgm.select()
@@ -569,21 +576,51 @@ class canvasManager():
 		if(bg!=None):
 			self.c.itemconfig(index, fill=bg)
 	
-	def getEvent(self,x,y,eventtype):
+	def getEvent(self,x,y,e):
+		global curchar,curfg,curbg
 		#print("received event in",x,y)
 		#transforms the event in X, Y, tool
 		#and sends it to drawingArea which will send it back
-		if eventtype=="click":
-			#Start showing a char even if not moved
-			
-			if(self.listener!=None):
-				if(x>0 and y>0 and x<cw*fw and y<ch*fh):
-					self.listener.click(int(x/fw),int(y/fh),0)
-		elif eventtype=="rclick":
-			if(self.listener!=None):
+		
+		if(self.listener!=None):
+			if e=="click":
+				#Start showing a char even if not moved
+				self.clicktool = tool
+				self.clickx = x
+				self.clicky = y
+			elif e=="unclick":
+				cc=0
+				if(self.clicktool=="Linebits"):
+					cc = ("`'´","-"+curchar+"-","_//|\\\\_")
+				elif(self.clicktool=="Pixels"):
+					cc = (" ▀▀▀▀▀▀▀▀▀█"," ░░░▒▓▓▓█"," ▄▄▄▄▄▄▄▄▄█")
+				elif(self.clicktool=="Box2"):
+					cc = ("║","═╝╝╝║╚╚╚═","═╝╝╝╩╚╚╚═","═╣╣╬╠╠═","═╗╗╗╦╔╔╔═","═╗╗╗║╔╔╔═","║")
+				elif(self.clicktool=="Box"):
+					cc = ("│","┘┴└","┘┴└","─┤┤┼├├─","┐┬┌","┐┬┌","│")
+				if(cc):
+					dx = int(x/fw)-int(self.clickx/fw)
+					dy = int(y/fh)-int(self.clicky/fh)
+					#c = ═║╚╝╠╣╦╩╬■►◄↕↨↑↓→←∟↔▲▼
+					h = int(len(cc)/2)
+					choosey = min(len(cc)-1,max(0,h+dy))
+					w = int(len(cc[choosey])/2)
+					choosex = min(len(cc[choosey])-1,max(0,w+dx))
+					
+					print(dx,"->",choosex,"\n",dy,"->",choosey,"\n",cc[choosey][choosex])
+					x=self.clickx
+					y=self.clicky
+					if(x>0 and y>0 and x<cw*fw and y<ch*fh):
+						self.putchar(int(x/fw),int(y/fh),
+							dochar.get() and cc[choosey][choosex] or None,
+							dofg.get() and curfg or None,
+							dobg.get() and curbg or None)
+				else:
+					if(x>0 and y>0 and x<cw*fw and y<ch*fh):
+						self.listener.click(int(x/fw),int(y/fh),0)
+			elif e=="rclick":
 				if(x>0 and y>0 and x<cw*fw and y<ch*fh):
 					fg,bg,c = self.getAt(int(x/fw),int(y/fh))
-					global curchar,curfg,curbg
 					curchar = c or " "
 					curbg = bg
 					curfg = fg
@@ -631,7 +668,11 @@ class drawingArea():
 	def click(self,x,y,tool):
 		if(tool==0):
 			#print("FG:",curfg,"BG:",curbg)
-			self.dc.putchar(x,y,choice("▀▄█░▒▓"),curfg,curbg)
+			self.dc.putchar(x,y,choice("▀▄█░▒▓"),None,None)
+			"""self.dc.putchar(x,y,
+							dobg and choice("▀▄█░▒▓") or None,
+							dofg and curfg or None,
+							dochar and curchar or None)"""
 		pass
 		
 	def typechar(self,x,y,char):
