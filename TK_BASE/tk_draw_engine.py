@@ -14,6 +14,8 @@ from os import name as osname
 import os
 import time
 
+from Tooltip import CreateToolTip
+
 root = Tk.Tk()
 monofonts = []
 
@@ -87,7 +89,6 @@ class App:
 		
 		self.toolsFrame = Tk.Frame(mainFrame)
 		self.toolsFrame.pack(side=Tk.TOP,fill=Tk.BOTH,expand=True)
-		self.setTools(self.toolsFrame)
 
 		self.displayFrame = Tk.Frame(mainFrame)
 		self.displayFrame.pack(side=Tk.LEFT)
@@ -99,6 +100,7 @@ class App:
 		self.drawing_area = drawingArea(self.canvas_drawing)
 		self.canvas_drawing.addListerner(self.drawing_area)
 		
+		self.setTools(self.toolsFrame)
 		self.setMenu(master)
 		
 	def setMenu(self,root):
@@ -176,21 +178,27 @@ class App:
 		pass
 		
 	def setTools(self,toolsFrame):
+		self.button_oldcolor = None
 		def changeTool(newtool):
 			def ct():
 				global tool
 				tool= newtool
 				for button in self.allTools:
+					if(self.button_oldcolor==None):
+						self.button_oldcolor = button.cget("bg")
+						
 					if(button.cget("text")==tool):
 						button.config(state="disabled")
+						button.config(bg="blue")
 						#print(tool,"is active")
 					else:
 						button.config(state="normal")
+						button.config(bg=self.button_oldcolor)
 						
 						
 			return ct
-		self.drawTool = Tk.Button(toolsFrame,text="Point", 
-			command = changeTool("Point"),state="disabled")
+		self.drawTool = Tk.Button(toolsFrame,text="Linebits", 
+			command = changeTool("Linebits")) #,state="disabled"
 		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
 		self.allTools.append(self.drawTool)
 		#when click releasing, put selected character
@@ -199,31 +207,33 @@ class App:
 		#right click copies characters
 		#right drag: selection
 		#hover: can type
+		#when dragging, draw lines diags, because they are difficult to reach normally?
+		self.drawTool.invoke()
+		
+		self.drawTool = Tk.Button(toolsFrame,text="SelectBy", 
+			command = changeTool("SelectBy"))
+		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
+		self.allTools.append(self.drawTool)
+		#same as Point right click, but with left click and more options?
 		
 		#TOOL: pixel-mode
-		self.drawTool = Tk.Button(toolsFrame,text="Pixel", 
-			command = changeTool("Pixel"))
+		self.drawTool = Tk.Button(toolsFrame,text="Pixels", 
+			command = changeTool("Pixels"))
 		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
 		self.allTools.append(self.drawTool)
 		#Drag for up/down half pixels, or for tone pixels (sides)
 		#Right click behaves like Point
 		
-		self.drawTool = Tk.Button(toolsFrame,text="Line", 
-			command = changeTool("Line"))
+		self.drawTool = Tk.Button(toolsFrame,text="Rectangle", 
+			command = changeTool("Rectangle"))
 		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
 		self.allTools.append(self.drawTool)
-		#when dragging, draw lines diags, because they are difficult to reach normally?
-		
-		self.drawTool = Tk.Button(toolsFrame,text="Select", 
-			command = changeTool("Select"))
-		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
-		self.allTools.append(self.drawTool)
-		#same as Point right click, but with left click and more options?
+		#Draw a rectangle of given char
 		
 		#when on, advances automatically. Should be a switch instead of a tool?
 		
-		self.drawTool = Tk.Button(toolsFrame,text="Recolor", 
-			command = changeTool("Recolor"))
+		self.drawTool = Tk.Button(toolsFrame,text="Box", 
+			command = changeTool("Box"))
 		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
 		self.allTools.append(self.drawTool)
 		#when on, typing a character only changes the character and not the color
@@ -231,6 +241,12 @@ class App:
 		#and click dragging changes the color as well instead of doing lines
 		
 		#Action: check if right tool otherwise unpressed
+		
+		
+		self.drawTool = Tk.Button(toolsFrame,text="Paint", 
+			command = changeTool("Paint"))
+		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
+		self.allTools.append(self.drawTool)
 		
 		
 		#Click Release:
@@ -260,7 +276,6 @@ class App:
 		#-Instant selection
 		#-Recolor: replace only char? Or instant selection as well?
 		
-		
 		highlight = Tk.Label(toolsFrame,text="[◙]")
 		highlight.pack(side=Tk.RIGHT,anchor = "e")
 		def setAllColor(event):
@@ -270,6 +285,9 @@ class App:
 		highlight.bind("<Enter>", setAllColor)
 		highlight.bind("<Leave>", unsetAllColor)
 		
+		
+		CreateToolTip(highlight,"Show colors")
+		
 		highlight = Tk.Label(toolsFrame,text="[a]")
 		highlight.pack(side=Tk.RIGHT,anchor = "e")
 		def setAllChars(event):
@@ -278,9 +296,14 @@ class App:
 			self.canvas_drawing.showAllChars(False)
 		highlight.bind("<Enter>", setAllChars)
 		highlight.bind("<Leave>", unsetAllChars)
+		
+		CreateToolTip(highlight,"Show chars")
+
+		goptionsFrame = Tk.Frame(toolsFrame)
+		goptionsFrame.pack(side=Tk.RIGHT,anchor = "w")
 
 		self.gridset = False
-		self.gridbutton = Tk.Button(toolsFrame,text="Grid")
+		self.gridbutton = Tk.Button(goptionsFrame,text="Grid")
 		def showgrid():
 			self.gridset = not self.gridset
 			self.canvas_drawing.showOutlines(self.gridset)
@@ -289,10 +312,11 @@ class App:
 			else:
 				self.gridbutton.config(relief=Tk.RAISED)
 		self.gridbutton.config(command = showgrid)
-		self.gridbutton.pack(side=Tk.RIGHT,anchor = "w")
+		self.gridbutton.pack(side=Tk.BOTTOM,anchor = "w")
+		
 		
 		self.textset = False
-		self.textbutton = Tk.Button(toolsFrame,text="Text")
+		self.textbutton = Tk.Button(goptionsFrame,text="Ins.")
 		def textMode():
 			self.textset = not self.textset
 			self.canvas_drawing.textmode(self.textset)
@@ -301,7 +325,33 @@ class App:
 			else:
 				self.textbutton.config(relief=Tk.RAISED)
 		self.textbutton.config(command = textMode)
-		self.textbutton.pack(side=Tk.RIGHT,anchor = "w")
+		self.textbutton.pack(side=Tk.BOTTOM,anchor = "w")
+		self.textbutton.invoke()
+		CreateToolTip(self.textbutton,"Insert mode on/off")
+		
+		
+		modeFrame = Tk.Frame(toolsFrame)
+		self.nochar = Tk.IntVar()
+		self.nofg = Tk.IntVar()
+		self.nobg = Tk.IntVar()
+		self.nochar.set(1)
+		self.nofg.set(1)
+		self.nobg.set(1)
+		fgm = Tk.Checkbutton(modeFrame,text="[FG]",var=self.nofg)
+		CreateToolTip(fgm,"Modify Foreground color when drawing")
+		bgm = Tk.Checkbutton(modeFrame,text="[BG]",var=self.nobg)
+		CreateToolTip(bgm,"Modify Background color when drawing")
+		chm = Tk.Checkbutton(modeFrame,text="[Ch]",var=self.nochar)
+		CreateToolTip(chm,"Modify Characters when drawing")
+		fgm.select()
+		bgm.select()
+		chm.select()
+		
+		fgm.pack(side=Tk.TOP)
+		bgm.pack(side=Tk.TOP)
+		chm.pack(side=Tk.TOP)
+		modeFrame.pack(side=Tk.RIGHT)
+		
 		
 		
 	def setCharacters(self,charactersFrame):
