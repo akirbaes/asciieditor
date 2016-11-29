@@ -643,8 +643,8 @@ class canvasManager():
 		#to remade for drawingArea instead next [TODO]
 		#to add ansi color codes [TODO]
 		datatext = ""
-		for i in range(CW):
-			for j in range(CH):
+		for j in range(CH):
+			for i in range(CW):
 				elem = self.fg[i][j]
 				char = self.c.itemcget(elem, "text") or " "
 				datatext+=char
