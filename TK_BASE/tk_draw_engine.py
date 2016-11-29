@@ -39,12 +39,17 @@ if(osname == "nt"):
 	fh = 20
 	monofont = font.Font(family="lucida console",size = -fh)
 else:
-	fh = 16
+	fh = 25
 	monofont = font.Font(family="Ubuntu Mono",size = -fh)
 fw = monofont.measure("M")
 FH=fh
 FW=fw
-DRAWABLE_CHARACTERS = u"""☺☻♥♦♣♠•○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼ !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~⌂ ¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿıƒ‗─│┌┐└┘├┤┬┴┼═║╔╗╚╝╠╣╦╩╬▀▄█░▒▓■   """
+DRAWABLE_CHARACTERS = (u"""☺☻♥♦♣♠•○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼ !"#$%&'()*+"""
+	""",-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`"""
+	"""abcdefghijklmnopqrstuvwxyz{|}~⌂ ¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾"""
+	"""¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝ"""
+	"""Þßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿıƒ‗"""
+	"""─│┌┐└┘├┤┬┴┼═║╔╗╚╝╠╣╦╩╬▀▄█░▒▓■   """)
 
 cw = 80
 CW = cw
@@ -58,11 +63,11 @@ colors = ["black","red","green","gold","blue","purple","cyan","gainsboro"]
 colors2 = ["dark slate gray","tomato","chartreuse","yellow","royal blue","magenta","aquamarine","snow",]
 
 
-curchar = ""
+curchar = " "
 curfg = "orange" #16
 curbg = "tomato" #8
 
-tool = "Point"
+tool = "Linebits"
 
 class App:
 	def __init__(self,master):
@@ -425,6 +430,7 @@ class canvasManager():
 	#Hides the real canvas
 	#For now it also holds the chars and colors data, but I have to separate view from data later on...
 	def __init__(self,canvas):
+		self.showbox = None #later on I will need to "showbox" several characters instead of one
 		self.canvas_mx = 0;
 		self.canvas_my = 0;
 		self.colorsbackup = []
@@ -437,15 +443,17 @@ class canvasManager():
 		self.wv = FW
 		self.hv = FH
 		self.listener = None;
-		hv = self.hv
-		wv = self.wv
 		self.bg = [[None]*CH for i in range(CW)]
 		self.fg = [[None]*CH for i in range(CW)]
+		
+		self.clicktool = None
+		self.clickx = -1
+		self.clicky = -1
 		#self.c.create_rectangle(((0,0),(CW*FW,CH*FH)),fill="red")
 		for i in range(CW):
 			for j in range(CH):
-				p1 = (i*wv,j*hv)
-				bbox = (p1,(i*wv+wv,j*hv+hv))
+				p1 = (i*FW,j*FH)
+				bbox = (p1,(i*FW+FW,j*FH+FH))
 				self.bg[i][j] = self.c.create_rectangle(bbox,outline="dark slate gray",width=0,fill="black")
 				self.fg[i][j] = self.c.create_text(p1,anchor="nw",font = monofont)
 				
@@ -459,8 +467,19 @@ class canvasManager():
 				
 		def clickevent(event):
 			self.canvas.focus_set()
-			self.getEvent(event.x,event.y)
+			self.getEvent(event.x,event.y,"click")
 		canvas.bind("<Button-1>", clickevent)
+		def unclickevent(event):
+			self.canvas.focus_set()
+			self.getEvent(event.x,event.y,"unclick")
+		canvas.bind("<ButtonRelease-1>", unclickevent)
+		
+		def rclickevent(event):
+			self.getEvent(event.x,event.y,"rclick")
+		canvas.bind("<Button-3>", rclickevent)
+		def unrclickevent(event):
+			self.getEvent(event.x,event.y,"unrclick")
+		canvas.bind("<ButtonRelease-3>", unrclickevent)
 		
 		def mmovevent(x,y):
 			def mmove(event):
@@ -550,14 +569,29 @@ class canvasManager():
 		if(bg!=None):
 			self.c.itemconfig(index, fill=bg)
 	
-	def getEvent(self,x,y):
+	def getEvent(self,x,y,eventtype):
 		#print("received event in",x,y)
 		#transforms the event in X, Y, tool
 		#and sends it to drawingArea which will send it back
-		if(self.listener!=None):
-			if(x>0 and y>0 and x<cw*fw and y<ch*fh):
-				self.listener.click(int(x/fw),int(y/fh),0)
-		pass
+		if eventtype=="click":
+			#Start showing a char even if not moved
+			
+			if(self.listener!=None):
+				if(x>0 and y>0 and x<cw*fw and y<ch*fh):
+					self.listener.click(int(x/fw),int(y/fh),0)
+		elif eventtype=="rclick":
+			if(self.listener!=None):
+				if(x>0 and y>0 and x<cw*fw and y<ch*fh):
+					fg,bg,c = self.getAt(int(x/fw),int(y/fh))
+					global curchar,curfg,curbg
+					curchar = c or " "
+					curbg = bg
+					curfg = fg
+				
+	def getAt(self,x,y):
+		return (self.c.itemcget(self.fg[x][y],"fill"),
+				self.c.itemcget(self.bg[x][y],"fill"),
+				self.c.itemcget(self.fg[x][y],"text"))
 		
 	def addListerner(self,listener):
 		self.listener = listener;
