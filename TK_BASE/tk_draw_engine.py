@@ -77,15 +77,26 @@ LTCYAN = tocolor(0,255,255)
 WHITE = tocolor(192,192,192)
 LTWHITE = tocolor(224,224,224)
 
-colors = ["black","red","green","gold","blue","purple","cyan","gainsboro"]
-colors2 = ["dark slate gray","tomato","chartreuse","yellow","royal blue","magenta","aquamarine","snow",]
-
 colors = [BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE]
 colors2 = [LTBLACK, LTRED, LTGREEN, LTYELLOW, LTBLUE, LTMAGENTA, LTCYAN, LTWHITE]
 
+
+BACKGROUND_COLORS = colors
+FOREGROUND_COLORS = colors+colors2
+
+def BGCODE(color):
+	index = BACKGROUND_COLORS.index(color)
+	return str(index+40)
+	
+def FGCODE(color):
+	index = FOREGROUND_COLORS.index(color)
+	return str(index%8+30)
+	
+	
+
 curchar = " "
-curfg = RED #"orange" #16
-curbg = CYAN #"tomato" #8
+curfg = LTWHITE #"orange" #16
+curbg = BLACK #"tomato" #8
 
 tool = "Linebits"
 
@@ -94,8 +105,6 @@ class App:
 		
 		self.currentFGButton = None
 		self.currentBGButton = None
-		#self.dupeImage = Tk.PhotoImage(file=os.path.join("Darpteam","Code","GUIELEM","duplicate.gif"))
-		#self.dupeImage = Tk.PhotoImage(file=os.path.join("..","GUIELEM","duplicate.gif"))
 
 		self.allTools = []
 		#MAINFRAME
@@ -153,6 +162,7 @@ class App:
 			global savename
 			filename = FileDialog.askopenfilename(defaultextension=".ascii.txt",filetypes=(("Ascii Text",".ascii.txt"),)) #plural is possible
 			if(filename):
+				self.loadDrawing(filename)
 				pushName(filename)
 				self.recent_files = [filename]+self.recent_files[:-1]
 				savename = filename
@@ -166,12 +176,19 @@ class App:
 				filename = self.recent_files[number]
 				#print("OpenR",number,"'"+filename+"'")
 				if(filename!=""):
+					self.loadDrawing(filename)
 					pushName(filename)
 					savename = filename
 
 			return openR
 			
-		self.menubar.add_command(label="New")
+		def new():
+			global savename
+			savename = "newfile_"+gen_time()+".ascii.txt"
+			#pushName(savename) #no because not saved yet
+			self.canvas_drawing.empty()
+			
+		self.menubar.add_command(label="New", command=new)
 		self.menubar.add_command(label="Open", command=open)
 		
 		def updatem():
@@ -199,8 +216,12 @@ class App:
 		saveplace.write(data)
 		saveplace.close()
 	
-	def loadDrawing(self):
-		pass
+	def loadDrawing(self,filename):
+		file = open(filename,"r",encoding="utf-8")
+		string = file.read()
+		file.close()
+		data = read_data_from_ansi(string)
+		self.canvas_drawing.load_data(data)
 		
 	def setTools(self,toolsFrame):
 		self.button_oldcolor = None
@@ -556,7 +577,27 @@ class canvasManager():
 		for line in self.bg:
 			for elem in line:
 				self.c.itemconfig(elem, width=do)
-	
+				
+	def empty(self):
+		for i,line in enumerate(self.fg):
+				for j,fgpart in enumerate(line):
+					bgpart = self.bg[i][j]
+					self.c.itemconfig(fgpart, text=" ")
+					self.c.itemconfig(fgpart, fill=WHITE)
+					self.c.itemconfig(bgpart, fill=BLACK)
+					
+	def load_data(self,data):
+		for i,line in enumerate(data):
+			for j,elem in enumerate(line):
+				nchar, fgc, bgc = elem
+				if(j>=cw or i>=ch):
+					break
+				fgpart = self.fg[j][i]
+				bgpart = self.bg[j][i]
+				self.c.itemconfig(fgpart, text=nchar)
+				self.c.itemconfig(fgpart, fill=fgc)
+				self.c.itemconfig(bgpart, fill=bgc)
+						
 	def showAllChars(self,do):
 		if(do and len(self.colorsbackup)==0) or ((not do) and len(self.colorsbackup)!=0):
 			for i,line in enumerate(self.fg):
@@ -699,12 +740,74 @@ class drawingArea():
 		if(char!=""):
 			self.dc.putchar(x,y,char,curfg,curbg)
 
-def colorConvert(string):
+def nextEscape(string):
+	index = string.find("\x1b[")
+	index2 = string[index:].find("m")
+	return index,index2
+	
+def codeData(ansi_string):
 	#receives an \0xetc. code,
 	#returns the FG and BG
 	#Because I'll probably not use them if I use any engine not console-based
-	pass
+	#\x1b[0;56;89m
+	#len("\x1b[")==2
+	data = ansi_string.replace("\x1b[","").replace("m","").split(";")
 	
+	if "1" in data:
+		brightness = 1 #"bold"
+	elif "22" in data:
+		brightness = 0 #"normal"
+	else:
+		brightness = None
+	
+	bgi = None
+	fgi = None
+	for n in data:
+		if("40"<=n and n<"48"):
+			bgi = int(n)-40
+		elif("30"<=n and n<"38"):
+			fgi = int(n)-30
+	if "0" in data:
+		brightness = 0
+		fgi = -1
+		bgi = -1
+	return brightness, fgi, bgi
+	
+def read_data_from_ansi(ansistring,fgstart = WHITE, bgstart = BLACK):
+	escs, esce = nextEscape(ansistring)
+	brightness = 0 #normal
+	fg = fgstart
+	bg = bgstart
+	alldata = []
+	currentline = []
+	for i in range(len(ansistring)):
+		if(i==escs and esce > escs):
+			nbright,nfg,nbg = codeData(ansistring[escs+2:esce])
+			i=esce+1 #position of the m
+			escs, esce = nextEscape(ansistring[i:])
+			if(brightness!=None):
+				brightness = nbright
+			if(nfg!=None):
+				if(nfg==-1):
+					fg = fgstart
+				else:
+					fg = FOREGROUND_COLORS[brightness*8+nfg]
+			if(nbg!=None):
+				if(nbg==-1):
+					bg = bgstart
+				else:
+					bg = BACKGROUND_COLORS[nbg]
+		else:
+			if(ansistring[i] in DRAWABLE_CHARACTERS):
+				currentline.append((ansistring[i],fg,bg))
+			elif(ansistring[i]=="\n"):
+				alldata.append(currentline)
+				currentline = []
+			else:
+				currentline.append(("?",fg,bg))
+	return alldata
+				
+		
 	
 app = App(root)
 root.mainloop()
