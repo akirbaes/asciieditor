@@ -164,7 +164,6 @@ class App:
 			if(filename):
 				self.loadDrawing(filename)
 				pushName(filename)
-				self.recent_files = [filename]+self.recent_files[:-1]
 				savename = filename
 			#file = FileDialog.askopenfile(mode='r')
 			#filename = FileDialog.askopenfilename() #plural is possible
@@ -212,7 +211,7 @@ class App:
 		#savename
 		#mode color or not
 		data = self.canvas_drawing.repr_data()
-		saveplace = open(savename,"w")
+		saveplace = open(savename,"w",encoding="utf-8")
 		saveplace.write(data)
 		saveplace.close()
 	
