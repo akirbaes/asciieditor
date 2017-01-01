@@ -50,7 +50,7 @@ DRAWABLE_CHARACTERS = (u"""☺☻♥♦♣♠•○◙♂♀♪♫☼►◄↕�
 	"""¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝ"""
 	"""Þßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿıƒ‗"""
 	"""─│┌┐└┘├┤┬┴┼═║╔╗╚╝╠╣╦╩╬▀▄█░▒▓■   """)
-
+ESC = "\x1b"
 cw = 80
 CW = cw
 ch = 24
@@ -440,7 +440,7 @@ class App:
 			b = Tk.Button(fg1,background=c,borderwidth=5)
 			b.config(command = gensetfg(c,b))
 			b.pack(side=Tk.LEFT)
-			if(c=="gainsboro"):
+			if(c==WHITE):
 				b.invoke()
 		fg2 = Tk.Frame(charactersFrame)
 		fg2.pack(side=Tk.TOP)
@@ -458,7 +458,7 @@ class App:
 			b.config(command = gensetbg(c,b))
 			b.pack(side=Tk.LEFT)
 			
-			if(c=="black"):
+			if(c==BLACK):
 				b.invoke()
 				
 		label = Tk.Label(charactersFrame,text="Colors")
@@ -501,8 +501,8 @@ class canvasManager():
 			for j in range(CH):
 				p1 = (i*FW,j*FH)
 				bbox = (p1,(i*FW+FW,j*FH+FH))
-				self.bg[i][j] = self.c.create_rectangle(bbox,outline="dark slate gray",width=0,fill="black")
-				self.fg[i][j] = self.c.create_text(p1,anchor="nw",font = monofont)
+				self.bg[i][j] = self.c.create_rectangle(bbox,outline="dark slate gray",width=0,fill=BLACK)
+				self.fg[i][j] = self.c.create_text(p1,anchor="nw",font = monofont,fill=BLACK)
 				
 		self.selectx = 0;
 		self.selecty = 0;
@@ -605,8 +605,8 @@ class canvasManager():
 					if(do):
 						col = self.c.itemcget(fgpart, "fill"), self.c.itemcget(bgpart, "fill")
 						self.colorsbackup.append(col)
-						self.c.itemconfig(fgpart, fill="white")
-						self.c.itemconfig(bgpart, fill="black")
+						self.c.itemconfig(fgpart, fill=WHITE)
+						self.c.itemconfig(bgpart, fill=BLACK)
 					else:
 						col = self.colorsbackup.pop(0)
 						self.c.itemconfig(fgpart, fill=col[0])
@@ -698,11 +698,51 @@ class canvasManager():
 		dy = y*fh
 		self.canvas.event_generate('<Motion>', warp=True, x=self.canvas_mx+dx,
 			y=self.canvas_my+dy)
-			
-	def repr_data(self,colors=False):
+				
+	def repr_data(self):
 		#to remade for drawingArea instead next [TODO]
 		#to add ansi color codes [TODO]
 		datatext = ""
+		fg = None
+		bg = None
+		brightness = 0
+		
+		for j in range(CH):
+			for i in range(CW):
+				fgelem = self.fg[i][j]
+				char = self.c.itemcget(fgelem, "text") or " "
+				nfg = self.c.itemcget(fgelem, "fill") 
+				bgelem = self.bg[i][j]
+				nbg = self.c.itemcget(bgelem, "fill")
+				
+				nb = ""
+				fgid = ""
+				bgid = ""
+				if(nfg!=fg and nfg!=None):
+					print(nfg)
+					fgid = str(FGCODE(nfg))
+					fg=nfg
+					if(nfg in colors2):
+						if(brightness == 0):
+							nb = "1"
+					else:
+						if(brightness == 1):
+							nb = "0"
+				if(nbg!=bg and nbg!=None):
+					bgid = str(BGCODE(nbg))
+					bg=nbg
+				if(fgid or bgid or nb):
+					datatext += ESC + "[" + (";".join((x for x in (nb,fgid,bgid) if x!=""))) + "m"
+				datatext+=char
+			datatext+="\n"
+		datatext+=ESC+"[0m"
+		return datatext
+		
+	def repr_data_bw(self):
+		#to remade for drawingArea instead next [TODO]
+		#to add ansi color codes [TODO]
+		datatext = ""
+		
 		for j in range(CH):
 			for i in range(CW):
 				elem = self.fg[i][j]
@@ -718,7 +758,7 @@ class drawingArea():
 		self.drawCanvas = canvas
 		self.dc = canvas
 		for i in range(min(CH-2,CW-2,25)):
-			self.dc.putchar(i,i,chr(ord("a")+i),"white","red")
+			self.dc.putchar(i,i,chr(ord("a")+i),WHITE,RED)
 		
 	def move(self,x,y):
 		self.x=x
@@ -739,9 +779,11 @@ class drawingArea():
 		if(char!=""):
 			self.dc.putchar(x,y,char,curfg,curbg)
 
-def nextEscape(string):
-	index = string.find("\x1b[")
-	index2 = string[index:].find("m")
+def nextEscape(string,startpos):
+	index = string.find("\x1b[",startpos)
+	#print("Found at",index)
+	index2 = string.find("m",index)
+	#print("Found second at",index2)
 	return index,index2
 	
 def codeData(ansi_string):
@@ -773,18 +815,21 @@ def codeData(ansi_string):
 	return brightness, fgi, bgi
 	
 def read_data_from_ansi(ansistring,fgstart = WHITE, bgstart = BLACK):
-	escs, esce = nextEscape(ansistring)
+	escs, esce = nextEscape(ansistring,0)
 	brightness = 0 #normal
 	fg = fgstart
 	bg = bgstart
 	alldata = []
 	currentline = []
-	for i in range(len(ansistring)):
+	i=0
+	while i<len(ansistring):
 		if(i==escs and esce > escs):
-			nbright,nfg,nbg = codeData(ansistring[escs+2:esce])
-			i=esce+1 #position of the m
-			escs, esce = nextEscape(ansistring[i:])
-			if(brightness!=None):
+			nbright,nfg,nbg = codeData(ansistring[escs:esce+1])
+			#print(escs,esce,'"'+ansistring[escs:esce+1]+'"',"->",nbright,nfg,nbg)
+			i=esce #position of the m
+			escs, esce = nextEscape(ansistring,i)
+			#print(escs,esce,'"'+ansistring[escs:esce+1]+'"',"->","new")
+			if(nbright!=None):
 				brightness = nbright
 			if(nfg!=None):
 				if(nfg==-1):
@@ -804,6 +849,7 @@ def read_data_from_ansi(ansistring,fgstart = WHITE, bgstart = BLACK):
 				currentline = []
 			else:
 				currentline.append(("?",fg,bg))
+		i+=1
 	return alldata
 				
 		
