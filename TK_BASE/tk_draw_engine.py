@@ -624,7 +624,13 @@ class canvasManager():
 						char = self.charsbackup.pop(0)
 						self.c.itemconfig(elem, text=char)
 						
+	def condputchar(self,x,y,char=None,fg=None,bg=None):
+		self.putchar(x,y,
+				(dochar.get() and char) or None,
+				(dofg.get() and fg) or None,
+				(dobg.get() and bg) or None)
 	def putchar(self,x,y,char=None,fg=None,bg=None):
+		print(char,fg,bg)
 		index = self.fg[x][y]
 		if(fg!=None):
 			self.c.itemconfig(index, fill=fg)
@@ -672,9 +678,9 @@ class canvasManager():
 					y=self.clicky
 					if(x>0 and y>0 and x<cw*fw and y<ch*fh):
 						self.putchar(int(x/fw),int(y/fh),
-							dochar.get() and cc[choosey][choosex] or None,
-							dofg.get() and curfg or None,
-							dobg.get() and curbg or None)
+							(dochar.get() and cc[choosey][choosex]) or None,
+							(dofg.get() and curfg) or None,
+							(dobg.get() and curbg) or None)
 				else:
 					if(x>0 and y>0 and x<cw*fw and y<ch*fh):
 						self.listener.click(int(x/fw),int(y/fh),0)
@@ -719,15 +725,16 @@ class canvasManager():
 				fgid = ""
 				bgid = ""
 				if(nfg!=fg and nfg!=None):
-					print(nfg)
 					fgid = str(FGCODE(nfg))
 					fg=nfg
 					if(nfg in colors2):
 						if(brightness == 0):
 							nb = "1"
+							brightness = 1
 					else:
 						if(brightness == 1):
-							nb = "0"
+							nb = "22"
+							brightness = 0
 				if(nbg!=bg and nbg!=None):
 					bgid = str(BGCODE(nbg))
 					bg=nbg
@@ -768,7 +775,7 @@ class drawingArea():
 	def click(self,x,y,tool):
 		if(tool==0):
 			#print("FG:",curfg,"BG:",curbg)
-			self.dc.putchar(x,y,choice("▀▄█░▒▓"),None,None)
+			self.dc.condputchar(x,y,choice("▀▄█░▒▓"),None,None)
 			"""self.dc.putchar(x,y,
 							dobg and choice("▀▄█░▒▓") or None,
 							dofg and curfg or None,
@@ -777,7 +784,7 @@ class drawingArea():
 		
 	def typechar(self,x,y,char):
 		if(char!=""):
-			self.dc.putchar(x,y,char,curfg,curbg)
+			self.dc.condputchar(x,y,char,curfg,curbg)
 
 def nextEscape(string,startpos):
 	index = string.find("\x1b[",startpos)
