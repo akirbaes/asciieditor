@@ -636,7 +636,7 @@ class canvasManager():
 			self.c.itemconfig(index, fill=fg)
 			
 		if(char!=None):
-			self.c.itemconfig(index, text=char)
+			self.c.itemconfig(index, text=char[0])
 			
 		index = self.bg[x][y]
 		if(bg!=None):
@@ -740,7 +740,7 @@ class canvasManager():
 					bg=nbg
 				if(fgid or bgid or nb):
 					datatext += ESC + "[" + (";".join((x for x in (nb,fgid,bgid) if x!=""))) + "m"
-				datatext+=char
+				datatext+=char[0]
 			datatext+="\n"
 		datatext+=ESC+"[0m"
 		return datatext
@@ -754,7 +754,7 @@ class canvasManager():
 			for i in range(CW):
 				elem = self.fg[i][j]
 				char = self.c.itemcget(elem, "text") or " "
-				datatext+=char
+				datatext+=char[0]
 			datatext+="\n"
 		return datatext
 	
