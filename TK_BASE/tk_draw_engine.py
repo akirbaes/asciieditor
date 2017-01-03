@@ -28,7 +28,7 @@ def gen_time():
 		(str(l.tm_sec).zfill(2)))
 
 	
-savename = "newfile_"+gen_time()+".ascii.txt"
+savename = "newfile_"+gen_time()+".ansi"
 
 for i in sorted(font.families()):
 	if "mono" in i.lower():
@@ -152,7 +152,10 @@ class App:
 			pushName(savename)
 		def saveAs():
 			global savename
-			filename =FileDialog.asksaveasfilename(defaultextension=".ascii.txt",filetypes=(("Ascii Text",".ascii.txt"),)) #only receives the filename
+			filename = FileDialog.asksaveasfilename(defaultextension=".ansi",
+				filetypes=(("ANSI text",".ansi"),("Plain text",".txt")),
+				initialfile=savename) #only receives the filename
+			print(filename)
 			if(filename):
 				savename = filename
 				self.saveDrawing()
@@ -160,7 +163,7 @@ class App:
 			#file = FileDialog.asksaveasfile(mode='w') #already creates it
 		def open():
 			global savename
-			filename = FileDialog.askopenfilename(defaultextension=".ascii.txt",filetypes=(("Ascii Text",".ascii.txt"),)) #plural is possible
+			filename = FileDialog.askopenfilename(defaultextension="txt",filetypes=(("ANSI text",".ansi"),("Plain text",".txt"))) #plural is possible
 			if(filename):
 				self.loadDrawing(filename)
 				pushName(filename)
@@ -210,7 +213,10 @@ class App:
 	def saveDrawing(self):
 		#savename
 		#mode color or not
-		data = self.canvas_drawing.repr_data()
+		if(savename[-4:]==".txt"):
+			data = self.canvas_drawing.repr_data_bw()
+		else:
+			data = self.canvas_drawing.repr_data()
 		saveplace = open(savename,"w",encoding="utf-8")
 		saveplace.write(data)
 		saveplace.close()
@@ -707,7 +713,6 @@ class canvasManager():
 				
 	def repr_data(self):
 		#to remade for drawingArea instead next [TODO]
-		#to add ansi color codes [TODO]
 		datatext = ""
 		fg = None
 		bg = None
