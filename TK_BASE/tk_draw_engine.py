@@ -29,6 +29,7 @@ def gen_time():
 
 	
 savename = "newfile_"+gen_time()+".ansi"
+root.title(savename)
 
 for i in sorted(font.families()):
 	if "mono" in i.lower():
@@ -158,6 +159,7 @@ class App:
 			print(filename)
 			if(filename):
 				savename = filename
+				root.title(savename)
 				self.saveDrawing()
 				pushName(savename)
 			#file = FileDialog.asksaveasfile(mode='w') #already creates it
@@ -168,6 +170,7 @@ class App:
 				self.loadDrawing(filename)
 				pushName(filename)
 				savename = filename
+				root.title(savename)
 			#file = FileDialog.askopenfile(mode='r')
 			#filename = FileDialog.askopenfilename() #plural is possible
 		self.recent_files=[""]*15
@@ -181,12 +184,14 @@ class App:
 					self.loadDrawing(filename)
 					pushName(filename)
 					savename = filename
+					root.title(savename)
 
 			return openR
 			
 		def new():
 			global savename
-			savename = "newfile_"+gen_time()+".ascii.txt"
+			savename = "newfile_"+gen_time()+".ansi"
+			root.title(savename)
 			#pushName(savename) #no because not saved yet
 			self.canvas_drawing.empty()
 			
@@ -215,6 +220,7 @@ class App:
 		#mode color or not
 		if(savename[-4:]==".txt"):
 			data = self.canvas_drawing.repr_data_bw()
+			print("Note: saving as plain .txt will not save color informations.")
 		else:
 			data = self.canvas_drawing.repr_data()
 		saveplace = open(savename,"w",encoding="utf-8")
@@ -477,6 +483,7 @@ class App:
 
 	def set_savename(self):
 		pass
+		#here I should put #root.title(savename)
 	def savefile(self):
 		pass
 class canvasManager():
