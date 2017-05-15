@@ -12,23 +12,18 @@ except ImportError:
 from random import choice
 from os import name as osname
 import os
-import time
+
+import utilities
+from constants import *
+from interface_constants import *
 
 from Tooltip import CreateToolTip
 
 root = Tk.Tk()
 monofonts = []
 
-def gen_time():
-	l = time.localtime(time.time())
-	return (str(l.tm_year)+"_"+\
-		(str(l.tm_yday).zfill(3))+"_"+\
-		(str(l.tm_hour).zfill(2))+\
-		(str(l.tm_min).zfill(2))+\
-		(str(l.tm_sec).zfill(2)))
-
 	
-savename = "newfile_"+gen_time()+".ansi"
+savename = "newfile_"+utilities.gen_time()+".ansi"
 root.title(savename)
 
 for i in sorted(font.families()):
@@ -45,55 +40,16 @@ else:
 fw = monofont.measure("M")
 FH=fh
 FW=fw
-DRAWABLE_CHARACTERS = (u"""☺☻♥♦♣♠•○◙♂♀♪♫☼►◄↕‼¶§▬↨↑↓→←∟↔▲▼ !"#$%&'()*+"""
-	""",-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`"""
-	"""abcdefghijklmnopqrstuvwxyz{|}~⌂ ¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾"""
-	"""¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝ"""
-	"""Þßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿıƒ‗"""
-	"""─│┌┐└┘├┤┬┴┼═║╔╗╚╝╠╣╦╩╬▀▄█░▒▓■   """)
+
 ESC = "\x1b"
 cw = 80
 CW = cw
 ch = 24
 CH = ch
 
-def tocolor(r,g,b):
-	return "#"+(hex(256*256*r+256*g+b)[2:].zfill(6))
 #black,red,green,yellow,blue,purple,cyan,white
 #light with 1
-BLACK = tocolor(0,0,0)
-LTBLACK = tocolor(128,128,128)
-RED = tocolor(128,0,0)
-LTRED = tocolor(255,0,0)
-GREEN = tocolor(0,128,0)
-LTGREEN = tocolor(0,255,0)
-YELLOW = tocolor(128,128,0)
-LTYELLOW = tocolor(255,255,0)
-BLUE = tocolor(0,0,128)
-LTBLUE = tocolor(0,0,255)
-MAGENTA = tocolor(128,0,128)
-LTMAGENTA = tocolor(255,0,255)
-CYAN = tocolor(0,128,128)
-LTCYAN = tocolor(0,255,255)
-WHITE = tocolor(192,192,192)
-LTWHITE = tocolor(224,224,224)
 
-colors = [BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE]
-colors2 = [LTBLACK, LTRED, LTGREEN, LTYELLOW, LTBLUE, LTMAGENTA, LTCYAN, LTWHITE]
-
-
-BACKGROUND_COLORS = colors
-FOREGROUND_COLORS = colors+colors2
-
-def BGCODE(color):
-	index = BACKGROUND_COLORS.index(color)
-	return str(index+40)
-	
-def FGCODE(color):
-	index = FOREGROUND_COLORS.index(color)
-	return str(index%8+30)
-	
-	
 
 curchar = " "
 curfg = LTWHITE #"orange" #16
@@ -190,7 +146,7 @@ class App:
 			
 		def new():
 			global savename
-			savename = "newfile_"+gen_time()+".ansi"
+			savename = "newfile_"+utilities.gen_time()+".ansi"
 			root.title(savename)
 			#pushName(savename) #no because not saved yet
 			self.canvas_drawing.empty()
@@ -231,7 +187,7 @@ class App:
 		file = open(filename,"r",encoding="utf-8")
 		string = file.read()
 		file.close()
-		data = read_data_from_ansi(string)
+		data = utilities.ansistring_to_charcolorindextriplet(string)
 		self.canvas_drawing.load_data(data)
 		
 	def setTools(self,toolsFrame):
@@ -770,7 +726,27 @@ class canvasManager():
 			datatext+="\n"
 		return datatext
 	
+	
+
 class drawingArea():
+	"""
+		what needed:
+			self.image_index = 0
+			self.anim = [] #for each animation image, there are layers
+			self.last_layer = 0 
+			#nitpick: if the number of the layer is different, this number will not change until we really click
+			#Do we do by name? or by limiting the number of layers and doing "layer depths"
+			#I say we have 4~8 layers that can be empty, swapped
+			#Colors should be CHAR, COLOR_INDEX, COLOR_INDEX
+			#Transparency for each layer should be definable
+			self.sizes = [] #contains the sizes of each image and layer, and offsets
+			#those will appear as little boxes
+			self.image = None #must have an "update" function with X,Y or more
+			self.update_image(x,y)
+			self.image_dirty = [] #this contains 80*25 instead (screen size)
+			A selection, that can go all the layers deep if alt is pressed
+			"""
+			
 	#Just the areas, like my old ones
 	def __init__(self,canvas):
 		self.zones = []
@@ -798,78 +774,6 @@ class drawingArea():
 		if(char!=""):
 			self.dc.condputchar(x,y,char,curfg,curbg)
 
-def nextEscape(string,startpos):
-	index = string.find("\x1b[",startpos)
-	#print("Found at",index)
-	index2 = string.find("m",index)
-	#print("Found second at",index2)
-	return index,index2
-	
-def codeData(ansi_string):
-	#receives an \0xetc. code,
-	#returns the FG and BG
-	#Because I'll probably not use them if I use any engine not console-based
-	#\x1b[0;56;89m
-	#len("\x1b[")==2
-	data = ansi_string.replace("\x1b[","").replace("m","").split(";")
-	
-	if "1" in data:
-		brightness = 1 #"bold"
-	elif "22" in data:
-		brightness = 0 #"normal"
-	else:
-		brightness = None
-	
-	bgi = None
-	fgi = None
-	for n in data:
-		if("40"<=n and n<"48"):
-			bgi = int(n)-40
-		elif("30"<=n and n<"38"):
-			fgi = int(n)-30
-	if "0" in data:
-		brightness = 0
-		fgi = -1
-		bgi = -1
-	return brightness, fgi, bgi
-	
-def read_data_from_ansi(ansistring,fgstart = WHITE, bgstart = BLACK):
-	escs, esce = nextEscape(ansistring,0)
-	brightness = 0 #normal
-	fg = fgstart
-	bg = bgstart
-	alldata = []
-	currentline = []
-	i=0
-	while i<len(ansistring):
-		if(i==escs and esce > escs):
-			nbright,nfg,nbg = codeData(ansistring[escs:esce+1])
-			#print(escs,esce,'"'+ansistring[escs:esce+1]+'"',"->",nbright,nfg,nbg)
-			i=esce #position of the m
-			escs, esce = nextEscape(ansistring,i)
-			#print(escs,esce,'"'+ansistring[escs:esce+1]+'"',"->","new")
-			if(nbright!=None):
-				brightness = nbright
-			if(nfg!=None):
-				if(nfg==-1):
-					fg = fgstart
-				else:
-					fg = FOREGROUND_COLORS[brightness*8+nfg]
-			if(nbg!=None):
-				if(nbg==-1):
-					bg = bgstart
-				else:
-					bg = BACKGROUND_COLORS[nbg]
-		else:
-			if(ansistring[i] in DRAWABLE_CHARACTERS):
-				currentline.append((ansistring[i],fg,bg))
-			elif(ansistring[i]=="\n"):
-				alldata.append(currentline)
-				currentline = []
-			else:
-				currentline.append(("?",fg,bg))
-		i+=1
-	return alldata
 				
 		
 	
