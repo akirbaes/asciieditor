@@ -1,3 +1,11 @@
+cw = 80
+CW = cw
+ch = 24
+CH = ch
+
+W = cw
+H = ch
+
 def tocolor(r,g,b):
 	"""RGB to hex string"""
 	return "#"+(hex(256*256*r+256*g+b)[2:].zfill(6))

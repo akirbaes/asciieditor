@@ -1,5 +1,6 @@
 import time
 from interface_constants import *
+from constants import *
 
 def gen_time():
 	l = time.localtime(time.time())
@@ -18,6 +19,10 @@ def FGCODE(color):
 	index = FOREGROUND_COLORS.index(color)
 	return str(index%8+30)
 	
+def BGCODE_FROMINDEX(index):
+	return str(index+40)
+def FGCODE_FROMINDEX(index):
+	return str(index%8+30)
 
 def ansicolorcode_to_colorindexnumber(ansi_string):
 	#receives an \0xetc. code,
@@ -93,3 +98,58 @@ def nextEscape(string,startpos):
 	#print("Found second at",index2)
 	return index,index2
 	
+	
+
+def repr_data(data,default = (0,0," ")):
+	#Works on a matrix of elements (fg_index,bg_index,char)
+	datatext = ""
+	fg = None
+	bg = None
+	brightness = 0
+	width = len(data)
+	height = len(data[0])
+	for j in range(height):
+		for i in range(width):
+			triplet = data[i][j]
+			if(triplet==None):
+				triplet = default	#default, later on decide
+			nfg,nbg,char = tuple(triplet)
+			
+			nb = ""
+			fgid = ""
+			bgid = ""
+			if(nfg!=fg and nfg!=None):
+				fgid = FGCODE_FROMINDEX(nfg)
+				fg=nfg
+				if(nfg >=8):
+					if(brightness == 0):
+						nb = "1"
+						brightness = 1
+				else:
+					if(brightness == 1):
+						nb = "22"
+						brightness = 0
+			if(nbg!=bg and nbg!=None):
+				bgid = BGCODE_FROMINDEX(nbg)
+				bg=nbg
+			if(fgid or bgid or nb):
+				datatext += ESC + "[" + (";".join((x for x in (nb,fgid,bgid) if x!=""))) + "m"
+			datatext+=char[0]
+		datatext+="\n"
+	datatext+=ESC+"[0m"
+	return datatext
+	#idea: same with position skip for repr_data_sprite
+	
+def repr_data_bw(data,default = " "):
+	#Works on a matrix of elements (fg_index,bg_index,char)
+	datatext = ""
+	width = len(data)
+	height = len(data[0])
+	for j in range(height):
+		for i in range(width):
+			if(data[i][j]!=None):
+				datatext+=tuple(data[i][j])[2]
+			else:
+				datatext+=default
+		datatext+="\n"
+	return datatext

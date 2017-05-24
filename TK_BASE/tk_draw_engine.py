@@ -41,11 +41,7 @@ fw = monofont.measure("M")
 FH=fh
 FW=fw
 
-ESC = "\x1b"
-cw = 80
-CW = cw
-ch = 24
-CH = ch
+
 
 #black,red,green,yellow,blue,purple,cyan,white
 #light with 1
@@ -442,6 +438,7 @@ class App:
 		#here I should put #root.title(savename)
 	def savefile(self):
 		pass
+
 class canvasManager():
 	#Hides the real canvas
 	#For now it also holds the chars and colors data, but I have to separate view from data later on...
@@ -727,7 +724,6 @@ class canvasManager():
 		return datatext
 	
 	
-
 class drawingArea():
 	"""
 		what needed:
