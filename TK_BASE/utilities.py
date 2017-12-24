@@ -62,7 +62,7 @@ def ansistring_to_charcolorindextriplet(ansistring,fgstart = WHITE, bgstart = BL
 	i=0
 	while i<len(ansistring):
 		if(i==escs and esce > escs):
-			nbright,nfg,nbg = utilities.ansicolorcode_to_colorindexnumber(ansistring[escs:esce+1])
+			nbright,nfg,nbg = ansicolorcode_to_colorindexnumber(ansistring[escs:esce+1])
 			#print(escs,esce,'"'+ansistring[escs:esce+1]+'"',"->",nbright,nfg,nbg)
 			i=esce #position of the m
 			escs, esce = nextEscape(ansistring,i)

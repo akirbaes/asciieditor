@@ -9,22 +9,27 @@ except ImportError:
 	import tkinter as Tk
 	from tkinter import font
 	from tkinter import filedialog as FileDialog
-from random import choice
-from os import name as osname
-import os
+try:
+	from random import choice
+	from os import name as osname
+	import os
 
-import utilities
-from constants import *
-from interface_constants import *
+	import utilities
+	from constants import *
+	from interface_constants import *
 
-from Tooltip import CreateToolTip
+	from Tooltip import CreateToolTip
+	from save_system import SaveSystem
+except ImportError:
+	print("Could not import important files")
+	raise
 
 root = Tk.Tk()
 monofonts = []
 
-	
-savename = "newfile_"+utilities.gen_time()+".ansi"
-root.title(savename)
+save_engine = SaveSystem()
+root.title(save_engine.get_current_filename())
+#Note: in the future, set the filename to the IMAGE to allow opening several
 
 for i in sorted(font.families()):
 	if "mono" in i.lower():
@@ -41,11 +46,8 @@ fw = monofont.measure("M")
 FH=fh
 FW=fw
 
-
-
 #black,red,green,yellow,blue,purple,cyan,white
 #light with 1
-
 
 curchar = " "
 curfg = LTWHITE #"orange" #16
@@ -91,59 +93,56 @@ class App:
 		self.setMenu(master)
 		
 	def setMenu(self,root):
+		#Menu with several options:
+		"""
 		
+		
+		
+		
+		
+		
+		
+		"""
 		self.menubar = Tk.Menu(root)
-		def pushName(filename):
-			if(filename):
-				if(filename in self.recent_files):
-					self.recent_files.remove(filename)
-					self.recent_files.append("")
-				self.recent_files = [filename]+self.recent_files[:-1]
 		###http://tkinter.unpythonic.net/wiki/tkFileDialog
 		def saveFile():
-			self.saveDrawing()
-			pushName(savename)
+			self.saveDrawing(save_engine.get_current_filename())
+			save_engine.pushName()
 		def saveAs():
-			global savename
 			filename = FileDialog.asksaveasfilename(defaultextension=".ansi",
 				filetypes=(("ANSI text",".ansi"),("Plain text",".txt")),
-				initialfile=savename) #only receives the filename
+				initialfile=save_engine.get_current_filename()) #only receives the filename
 			print(filename)
 			if(filename):
-				savename = filename
-				root.title(savename)
-				self.saveDrawing()
-				pushName(savename)
+				save_engine.set_current_filename(filename)
+				root.title(filename)
+				self.saveFile()
 			#file = FileDialog.asksaveasfile(mode='w') #already creates it
 		def open():
-			global savename
 			filename = FileDialog.askopenfilename(defaultextension="txt",filetypes=(("ANSI text",".ansi"),("Plain text",".txt"))) #plural is possible
 			if(filename):
 				self.loadDrawing(filename)
-				pushName(filename)
-				savename = filename
-				root.title(savename)
+				save_engine.pushName(filename)
+				save_engine.set_current_filename(filename)
+				root.title(filename)
 			#file = FileDialog.askopenfile(mode='r')
 			#filename = FileDialog.askopenfilename() #plural is possible
-		self.recent_files=[""]*15
 		self.menu_recent=[]
 		def openRecent(number):
 			def openR():
-				global savename
-				filename = self.recent_files[number]
+				filename = save_engine.get_recent_filename(number)
 				#print("OpenR",number,"'"+filename+"'")
 				if(filename!=""):
 					self.loadDrawing(filename)
-					pushName(filename)
-					savename = filename
-					root.title(savename)
-
+					save_engine.pushName(filename)
+					save_engine.set_current_filename(filename)
+					root.title(filename)
 			return openR
 			
 		def new():
-			global savename
 			savename = "newfile_"+utilities.gen_time()+".ansi"
 			root.title(savename)
+			save_engine.set_current_filename(savename)
 			#pushName(savename) #no because not saved yet
 			self.canvas_drawing.empty()
 			
@@ -152,7 +151,7 @@ class App:
 		
 		def updatem():
 			for i in range(15):
-				self.recentmenu.entryconfigure(i, label="["+str(i).zfill(2)+"]: "+(self.recent_files[i] or "-- No entry here --"))
+				self.recentmenu.entryconfigure(i, label="["+str(i).zfill(2)+"]: "+(save_engine.get_recent_filename(i) or "-- No entry here --"))
 		
 		self.recentmenu = Tk.Menu(self.menubar, tearoff=0, postcommand=updatem)
 		for i in range(15):
@@ -167,7 +166,9 @@ class App:
 
 		# display the menu
 		root.config(menu=self.menubar)
-	def saveDrawing(self):
+		
+		
+	def saveDrawing(self,savename):
 		#savename
 		#mode color or not
 		if(savename[-4:]==".txt"):
@@ -433,12 +434,6 @@ class App:
 			l = Tk.Label(col,text=c)
 			l.grid(column=int(i%16),row=int(i/16))
 
-	def set_savename(self):
-		pass
-		#here I should put #root.title(savename)
-	def savefile(self):
-		pass
-
 class canvasManager():
 	#Hides the real canvas
 	#For now it also holds the chars and colors data, but I have to separate view from data later on...
@@ -690,7 +685,7 @@ class canvasManager():
 				fgid = ""
 				bgid = ""
 				if(nfg!=fg and nfg!=None):
-					fgid = str(FGCODE(nfg))
+					fgid = str(utilities.FGCODE(nfg))
 					fg=nfg
 					if(nfg in colors2):
 						if(brightness == 0):
@@ -701,7 +696,7 @@ class canvasManager():
 							nb = "22"
 							brightness = 0
 				if(nbg!=bg and nbg!=None):
-					bgid = str(BGCODE(nbg))
+					bgid = str(utilities.BGCODE(nbg))
 					bg=nbg
 				if(fgid or bgid or nb):
 					datatext += ESC + "[" + (";".join((x for x in (nb,fgid,bgid) if x!=""))) + "m"
