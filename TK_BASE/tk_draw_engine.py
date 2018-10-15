@@ -2,13 +2,17 @@
 # -*- coding: utf-8 -*-
 
 try:
+	#Python 3
 	import Tkinter as Tk
 	from Tkinter import font
 	from Tkinter import tkFileDialog as FileDialog
+	from Tkinter import *
 except ImportError:
+	#Python 2
 	import tkinter as Tk
 	from tkinter import font
 	from tkinter import filedialog as FileDialog
+	from tkinter import *
 try:
 	from random import choice
 	from os import name as osname
@@ -24,17 +28,13 @@ except ImportError:
 	print("Could not import important files")
 	raise
 
-root = Tk.Tk()
-monofonts = []
+from drawingarea import *
+	
+root = Tk()
 
 save_engine = SaveSystem()
 root.title(save_engine.get_current_filename())
 #Note: in the future, set the filename to the IMAGE to allow opening several
-
-for i in sorted(font.families()):
-	if "mono" in i.lower():
-		#print(i);
-		monofonts.append(i)
 
 if(osname == "nt"):
 	fh = 20
@@ -49,11 +49,24 @@ FW=fw
 #black,red,green,yellow,blue,purple,cyan,white
 #light with 1
 
-curchar = " "
-curfg = LTWHITE #"orange" #16
-curbg = BLACK #"tomato" #8
+curchar = StringVar()
+curchar.set("b")
 
-tool = "Linebits"
+curfg = StringVar()
+curfg.set(LTWHITE)
+curbg = StringVar()
+curbg.set(BLACK)
+
+
+from Tools import *
+
+curtool = StringVar()
+curtool.set("Pen")
+#"Linebits"
+
+def init_pencilcolor(masterframe):
+	topFrame = Frame(masterframe)
+	
 
 class App:
 	def __init__(self,master):
@@ -63,61 +76,49 @@ class App:
 
 		self.allTools = []
 		#MAINFRAME
-		mainFrame = Tk.Frame(master)
-		mainFrame.pack(fill=Tk.BOTH,expand=True)
+		mainFrame = Frame(master)
+		mainFrame.pack(fill=BOTH,expand=True)
 
 
 		#PARAMETERS FRAME on the right    self.parametersFrame
 		
-		self.parametersFrame = Tk.Frame(mainFrame,bg="pink")
-		self.parametersFrame.pack(side=Tk.RIGHT,anchor="e",fill=Tk.BOTH)
+		self.parametersFrame = Frame(mainFrame,bg="pink")
+		self.parametersFrame.pack(side=RIGHT,anchor="e",fill=BOTH)
 		
-		self.charactersFrame = Tk.Frame(self.parametersFrame)
-		self.charactersFrame.pack(side=Tk.TOP,anchor="n")
+		self.charactersFrame = Frame(self.parametersFrame)
+		self.charactersFrame.pack(side=TOP,anchor="n")
 		self.setCharacters(self.charactersFrame)
 		
-		self.toolsFrame = Tk.Frame(mainFrame)
-		self.toolsFrame.pack(side=Tk.TOP,fill=Tk.BOTH,expand=True)
+		self.toolsFrame = Frame(mainFrame)
+		self.toolsFrame.pack(side=TOP,fill=BOTH,expand=True)
 
-		self.displayFrame = Tk.Frame(mainFrame)
-		self.displayFrame.pack(side=Tk.LEFT)
+		self.displayFrame = Frame(mainFrame)
+		self.displayFrame.pack(side=LEFT)
 			
-		self.canvas = Tk.Canvas(self.displayFrame, width=FW*CW, height=FH*CH)
+		self.canvas = Canvas(self.displayFrame, width=FW*CW, height=FH*CH)
 		self.canvas.pack()
 		
-		self.canvas_drawing = canvasManager(self.canvas)
-		self.drawing_area = drawingArea(self.canvas_drawing)
-		self.canvas_drawing.addListerner(self.drawing_area)
+		self.drawing = Drawing()
+		self.canvas_drawing = DrawingManager(self.canvas, self.drawing)
+		
+		self.drawing.set_canvas(self.canvas_drawing)
+		#self.canvas_drawing.set_drawing(self.drawing)
+		# self.canvas_drawing.addListerner(self.drawing_area)
 		
 		self.setTools(self.toolsFrame)
 		self.setMenu(master)
 		
 	def setMenu(self,root):
-		#Menu with several options:
-		"""
-		
-		
-		
-		
-		
-		
-		
-		"""
-		self.menubar = Tk.Menu(root)
+		#Menu with several options
+		self.menubar = Menu(root)
 		###http://tkinter.unpythonic.net/wiki/tkFileDialog
-		def saveFile():
-			self.saveDrawing(save_engine.get_current_filename())
-			save_engine.pushName()
-		def saveAs():
-			filename = FileDialog.asksaveasfilename(defaultextension=".ansi",
-				filetypes=(("ANSI text",".ansi"),("Plain text",".txt")),
-				initialfile=save_engine.get_current_filename()) #only receives the filename
-			print(filename)
-			if(filename):
-				save_engine.set_current_filename(filename)
-				root.title(filename)
-				self.saveFile()
-			#file = FileDialog.asksaveasfile(mode='w') #already creates it
+		
+		def new():
+			savename = "newfile_"+utilities.gen_time()+".ansi"
+			root.title(savename)
+			save_engine.set_current_filename(savename)
+			#pushName(savename) #no because not saved yet
+			#self.canvas_drawing.empty()
 		def open():
 			filename = FileDialog.askopenfilename(defaultextension="txt",filetypes=(("ANSI text",".ansi"),("Plain text",".txt"))) #plural is possible
 			if(filename):
@@ -138,27 +139,33 @@ class App:
 					save_engine.set_current_filename(filename)
 					root.title(filename)
 			return openR
+		def saveFile():
+			self.saveDrawing(save_engine.get_current_filename())
+			save_engine.pushName()
+		def saveAs():
+			filename = FileDialog.asksaveasfilename(defaultextension=".ansi",
+				filetypes=(("ANSI text",".ansi"),("Plain text",".txt")),
+				initialfile=save_engine.get_current_filename()) #only receives the filename
+			print(filename)
+			if(filename):
+				save_engine.set_current_filename(filename)
+				root.title(filename)
+				self.saveFile()
+			#file = FileDialog.asksaveasfile(mode='w') #already creates it
 			
-		def new():
-			savename = "newfile_"+utilities.gen_time()+".ansi"
-			root.title(savename)
-			save_engine.set_current_filename(savename)
-			#pushName(savename) #no because not saved yet
-			self.canvas_drawing.empty()
-			
-		self.menubar.add_command(label="New", command=new)
-		self.menubar.add_command(label="Open", command=open)
-		
 		def updatem():
 			for i in range(15):
 				self.recentmenu.entryconfigure(i, label="["+str(i).zfill(2)+"]: "+(save_engine.get_recent_filename(i) or "-- No entry here --"))
 		
-		self.recentmenu = Tk.Menu(self.menubar, tearoff=0, postcommand=updatem)
+		self.recentmenu = Menu(self.menubar, tearoff=0, postcommand=updatem)
 		for i in range(15):
 			self.recentmenu.add_command(command=openRecent(i))
 		#updatem()
-		self.menubar.add_cascade(label="▼Open recent",menu=self.recentmenu)
 		
+		
+		self.menubar.add_command(label="New", command=new)
+		self.menubar.add_command(label="Open", command=open)
+		self.menubar.add_cascade(label="▼Open recent",menu=self.recentmenu)
 		self.menubar.add_command(label="Save", command=saveFile)
 		self.menubar.add_command(label="Save as", command=saveAs)
 		self.menubar.add_separator()
@@ -188,29 +195,29 @@ class App:
 		self.canvas_drawing.load_data(data)
 		
 	def setTools(self,toolsFrame):
-		self.button_oldcolor = None
-		def changeTool(newtool):
-			def ct():
-				global tool
-				tool= newtool
-				for button in self.allTools:
-					if(self.button_oldcolor==None):
-						self.button_oldcolor = button.cget("bg")
+		# # self.button_oldcolor = None
+		# # def changeTool(newtool):
+			# # def ct():
+				# # global tool
+				# # tool= newtool
+				# # for button in self.allTools:
+					# # if(self.button_oldcolor==None):
+						# # self.button_oldcolor = button.cget("bg")
 						
-					if(button.cget("text")==tool):
-						button.config(state="disabled")
-						button.config(bg="blue")
-						#print(tool,"is active")
-					else:
-						button.config(state="normal")
-						button.config(bg=self.button_oldcolor)
+					# # if(button.cget("text")==tool):
+						# # button.config(state="disabled")
+						# # button.config(bg="blue")
+						# # #print(tool,"is active")
+					# # else:
+						# # button.config(state="normal")
+						# # button.config(bg=self.button_oldcolor)
 						
 						
-			return ct
-		self.drawTool = Tk.Button(toolsFrame,text="Linebits", 
-			command = changeTool("Linebits")) #,state="disabled"
-		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
-		self.allTools.append(self.drawTool)
+			# # return ct
+		# # self.drawTool = Button(toolsFrame,text="Linebits", 
+		# # command = changeTool("Linebits")) #,state="disabled"
+		# # self.drawTool.pack(side=LEFT,anchor = "w")
+		# # self.allTools.append(self.drawTool)
 		#when click releasing, put selected character
 		#click dragging: lines characters?
 		#depending on drag direction and distance, different "hard to reach" characters
@@ -218,40 +225,42 @@ class App:
 		#right drag: selection
 		#hover: can type
 		#when dragging, draw lines diags, because they are difficult to reach normally?
-		self.drawTool.invoke()
+		# # self.drawTool.invoke()
 		
-		self.drawTool = Tk.Button(toolsFrame,text="SelectBy", 
-			command = changeTool("SelectBy"))
-		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
-		self.allTools.append(self.drawTool)
+		# # self.drawTool = Button(toolsFrame,text="SelectBy", 
+		# # command = changeTool("SelectBy"))
+		# # self.drawTool.pack(side=LEFT,anchor = "w")
+		# # self.allTools.append(self.drawTool)
 		#same as Point right click, but with left click and more options?
 		
 		#TOOL: pixel-mode
-		self.drawTool = Tk.Button(toolsFrame,text="Pixels", 
-			command = changeTool("Pixels"))
-		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
-		self.allTools.append(self.drawTool)
+		# # self.drawTool = Button(toolsFrame,text="Pixels", 
+		# # command = changeTool("Pixels"))
+		# # self.drawTool.pack(side=LEFT,anchor = "w")
+		# # self.allTools.append(self.drawTool)
 		#Drag for up/down half pixels, or for tone pixels (sides)
 		#Right click behaves like Point
 		
-		self.drawTool = Tk.Button(toolsFrame,text="Rectangle", 
-			command = changeTool("Rectangle"))
-		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
-		self.allTools.append(self.drawTool)
+		# self.drawTool = Button(toolsFrame,text="Rectangle", 
+		# command = changeTool("Rectangle"))
+		# self.drawTool.pack(side=LEFT,anchor = "w")
+		# self.allTools.append(self.drawTool)
 		#Draw a rectangle of given char
 		
 		#when on, advances automatically. Should be a switch instead of a tool?
 		
-		self.drawTool = Tk.Button(toolsFrame,text="Box", 
-			command = changeTool("Box"))
-		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
-		self.allTools.append(self.drawTool)
+		# # self.drawTool = Button(toolsFrame,text="Box", 
+		# # command = changeTool("Box"))
+		# # self.drawTool.pack(side=LEFT,anchor = "w")
+		# # self.allTools.append(self.drawTool)
 		
 		
-		self.drawTool = Tk.Button(toolsFrame,text="Box2", 
-			command = changeTool("Box2"))
-		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
-		self.allTools.append(self.drawTool)
+		# # self.drawTool = Button(toolsFrame,text="Box2", 
+		# # command = changeTool("Box2"))
+		# # self.drawTool.pack(side=LEFT,anchor = "w")
+		# # self.allTools.append(self.drawTool)
+		
+		
 		#when on, typing a character only changes the character and not the color
 		#and click releasing changes the color but not the character
 		#and click dragging changes the color as well instead of doing lines
@@ -259,10 +268,10 @@ class App:
 		#Action: check if right tool otherwise unpressed
 		
 		
-		self.drawTool = Tk.Button(toolsFrame,text="Paint", 
-			command = changeTool("Paint"))
-		self.drawTool.pack(side=Tk.LEFT,anchor = "w")
-		self.allTools.append(self.drawTool)
+		# # self.drawTool = Button(toolsFrame,text="Paint", 
+		# # command = changeTool("Paint"))
+		# # self.drawTool.pack(side=LEFT,anchor = "w")
+		# # self.allTools.append(self.drawTool)
 		
 		
 		#Click Release:
@@ -292,8 +301,8 @@ class App:
 		#-Instant selection
 		#-Recolor: replace only char? Or instant selection as well?
 		
-		highlight = Tk.Label(toolsFrame,text="[◙]")
-		highlight.pack(side=Tk.RIGHT,anchor = "e")
+		highlight = Label(toolsFrame,text="[◙]")
+		highlight.pack(side=RIGHT,anchor = "e")
 		def setAllColor(event):
 			self.canvas_drawing.showAllColors(True)
 		def unsetAllColor(event):
@@ -304,8 +313,8 @@ class App:
 		
 		CreateToolTip(highlight,"Show colors")
 		
-		highlight = Tk.Label(toolsFrame,text="[a]")
-		highlight.pack(side=Tk.RIGHT,anchor = "e")
+		highlight = Label(toolsFrame,text="[a]")
+		highlight.pack(side=RIGHT,anchor = "e")
 		def setAllChars(event):
 			self.canvas_drawing.showAllChars(True)
 		def unsetAllChars(event):
@@ -315,75 +324,72 @@ class App:
 		
 		CreateToolTip(highlight,"Show chars")
 
-		goptionsFrame = Tk.Frame(toolsFrame)
-		goptionsFrame.pack(side=Tk.RIGHT,anchor = "w")
+		goptionsFrame = Frame(toolsFrame)
+		goptionsFrame.pack(side=RIGHT,anchor = "w")
 
 		self.gridset = False
-		self.gridbutton = Tk.Button(goptionsFrame,text="Grid")
+		self.gridbutton = Button(goptionsFrame,text="Grid")
 		def showgrid():
 			self.gridset = not self.gridset
 			self.canvas_drawing.showOutlines(self.gridset)
 			if(self.gridset):
-				self.gridbutton.config(relief=Tk.SUNKEN)
+				self.gridbutton.config(relief=SUNKEN)
 			else:
-				self.gridbutton.config(relief=Tk.RAISED)
+				self.gridbutton.config(relief=RAISED)
 		self.gridbutton.config(command = showgrid)
-		self.gridbutton.pack(side=Tk.BOTTOM,anchor = "w")
+		self.gridbutton.pack(side=BOTTOM,anchor = "w")
 		
 		
 		self.textset = False
-		self.textbutton = Tk.Button(goptionsFrame,text="Ins.")
+		self.textbutton = Button(goptionsFrame,text="Ins.")
 		def textMode():
 			self.textset = not self.textset
 			self.canvas_drawing.textmode(self.textset)
 			if(self.textset):
-				self.textbutton.config(relief=Tk.SUNKEN)
+				self.textbutton.config(relief=SUNKEN)
 			else:
-				self.textbutton.config(relief=Tk.RAISED)
+				self.textbutton.config(relief=RAISED)
 		self.textbutton.config(command = textMode)
-		self.textbutton.pack(side=Tk.BOTTOM,anchor = "w")
+		self.textbutton.pack(side=BOTTOM,anchor = "w")
 		self.textbutton.invoke()
 		CreateToolTip(self.textbutton,"Insert mode on/off")
 		
-		
-		modeFrame = Tk.Frame(toolsFrame)
+		#Modification modes
+		modeFrame = Frame(toolsFrame)
 		global dochar,dofg,dobg
-		dochar = Tk.IntVar()
-		dofg = Tk.IntVar()
-		dobg = Tk.IntVar()
+		dochar = IntVar()
+		dofg = IntVar()
+		dobg = IntVar()
 		dochar.set(1)
 		dofg.set(1)
 		dobg.set(1)
-		fgm = Tk.Checkbutton(modeFrame,text="[FG]",var=dofg)
+		fgm = Checkbutton(modeFrame,text="[FG]",var=dofg)
 		CreateToolTip(fgm,"Modify Foreground color when drawing")
-		bgm = Tk.Checkbutton(modeFrame,text="[BG]",var=dobg)
+		bgm = Checkbutton(modeFrame,text="[BG]",var=dobg)
 		CreateToolTip(bgm,"Modify Background color when drawing")
-		chm = Tk.Checkbutton(modeFrame,text="[Ch]",var=dochar)
+		chm = Checkbutton(modeFrame,text="[Ch]",var=dochar)
 		CreateToolTip(chm,"Modify Characters when drawing")
 		fgm.select()
 		bgm.select()
 		chm.select()
 		
-		fgm.pack(side=Tk.TOP)
-		bgm.pack(side=Tk.TOP)
-		chm.pack(side=Tk.TOP)
-		modeFrame.pack(side=Tk.RIGHT)
+		fgm.pack(side=TOP)
+		bgm.pack(side=TOP)
+		chm.pack(side=TOP)
+		modeFrame.pack(side=RIGHT)
 		
 		
 		
 	def setCharacters(self,charactersFrame):
-		global curbg
-		global curfg
 		
-		label = Tk.Label(charactersFrame,text="Foreground")
-		label.pack(side=Tk.TOP)
-		fg1 = Tk.Frame(charactersFrame)
-		fg1.pack(side=Tk.TOP)
+		label = Label(charactersFrame,text="Foreground")
+		label.pack(side=TOP)
+		fg1 = Frame(charactersFrame)
+		fg1.pack(side=TOP)
 		
 		def gensetfg(c,b):
 			def setfg():
-				global curfg; 
-				curfg=c; 
+				curfg.set(c); 
 				if(self.currentFGButton!=None):
 					self.currentFGButton.config(state="normal",relief="raised")
 				self.currentFGButton=b
@@ -392,8 +398,7 @@ class App:
 			
 		def gensetbg(c,b):
 			def setbg():
-				global curbg; 
-				curbg=c; 
+				curbg.set(c); 
 				if(self.currentBGButton!=None):
 					self.currentBGButton.config(state="normal",relief="raised")
 				self.currentBGButton=b
@@ -402,42 +407,46 @@ class App:
 		
 		for c in colors:
 			#print("Curfg:",curfg,"Put c",c)
-			b = Tk.Button(fg1,background=c,borderwidth=5)
+			b = Button(fg1,background=c,borderwidth=5)
 			b.config(command = gensetfg(c,b))
-			b.pack(side=Tk.LEFT)
+			b.pack(side=LEFT)
 			if(c==WHITE):
 				b.invoke()
-		fg2 = Tk.Frame(charactersFrame)
-		fg2.pack(side=Tk.TOP)
+		fg2 = Frame(charactersFrame)
+		fg2.pack(side=TOP)
 		for c in colors2:
-			b = Tk.Button(fg2,background=c,borderwidth=5)
+			b = Button(fg2,background=c,borderwidth=5)
 			b.config(command = gensetfg(c,b))
-			b.pack(side=Tk.LEFT)
+			b.pack(side=LEFT)
 		
-		label = Tk.Label(charactersFrame,text="Background")
-		label.pack(side=Tk.TOP)
-		bg = Tk.Frame(charactersFrame)
-		bg.pack(side=Tk.TOP)
+		label = Label(charactersFrame,text="Background")
+		label.pack(side=TOP)
+		bg = Frame(charactersFrame)
+		bg.pack(side=TOP)
 		for c in colors:
-			b = Tk.Button(bg,background=c,borderwidth=5)
+			b = Button(bg,background=c,borderwidth=5)
 			b.config(command = gensetbg(c,b))
-			b.pack(side=Tk.LEFT)
+			b.pack(side=LEFT)
 			
 			if(c==BLACK):
 				b.invoke()
 				
-		label = Tk.Label(charactersFrame,text="Colors")
-		label.pack(side=Tk.TOP)
-		col = Tk.Frame(charactersFrame)
-		col.pack(side=Tk.TOP)
+		label = Label(charactersFrame,text="Colors")
+		label.pack(side=TOP)
+		col = Frame(charactersFrame)
+		col.pack(side=TOP)
 		for i,c in enumerate(DRAWABLE_CHARACTERS):
-			l = Tk.Label(col,text=c)
+			l = Label(col,text=c)
 			l.grid(column=int(i%16),row=int(i/16))
 
-class canvasManager():
+class DrawingManager():
 	#Hides the real canvas
 	#For now it also holds the chars and colors data, but I have to separate view from data later on...
-	def __init__(self,canvas):
+	def set_drawing(drawing):
+		self.drawing = drawing
+		#And redo the _init_ parts that require the drawing
+	
+	def __init__(self,canvas, drawing):
 		self.showbox = None #later on I will need to "showbox" several characters instead of one
 		self.canvas_mx = 0;
 		self.canvas_my = 0;
@@ -445,6 +454,9 @@ class canvasManager():
 		self.charsbackup = []
 		self.istextmode = False
 		
+		self.current_tool = Pen(canvas,self)
+		self.current_character_variables = (curfg, curbg, curchar)
+		self.drawing = drawing
 		self.canvas = canvas
 		self.canvas.config(highlightthickness=0)
 		self.c = canvas
@@ -457,7 +469,7 @@ class canvasManager():
 		self.clicktool = None
 		self.clickx = -1
 		self.clicky = -1
-		#self.c.create_rectangle(((0,0),(CW*FW,CH*FH)),fill="red")
+		self.c.create_rectangle(((0,0),(CW*FW,CH*FH)),fill="red")
 		for i in range(CW):
 			for j in range(CH):
 				p1 = (i*FW,j*FH)
@@ -472,22 +484,38 @@ class canvasManager():
 		self.typing = False;
 		
 		canvas.bind("<Enter>", lambda event: canvas.focus_set())
-				
-		def clickevent(event):
-			self.canvas.focus_set()
-			self.getEvent(event.x,event.y,"click")
-		canvas.bind("<Button-1>", clickevent)
-		def unclickevent(event):
-			self.canvas.focus_set()
-			self.getEvent(event.x,event.y,"unclick")
-		canvas.bind("<ButtonRelease-1>", unclickevent)
 		
-		def rclickevent(event):
-			self.getEvent(event.x,event.y,"rclick")
-		canvas.bind("<Button-3>", rclickevent)
-		def unrclickevent(event):
-			self.getEvent(event.x,event.y,"unrclick")
-		canvas.bind("<ButtonRelease-3>", unrclickevent)
+		def send_event(eventType):
+			def act(event):
+				layer = self.drawing.get_current_layer()
+				self.current_tool.send_event(eventType, event, layer, self.wv, self.hv, (curfg, curbg, curchar))
+			return act
+		canvas.bind("<Button-1>", send_event("<Button-1>"))
+		canvas.bind("<B1-Motion>", send_event("<B1-Motion>"))
+		canvas.bind("<ButtonRelease-1>", send_event("<ButtonRelease-1>"))
+		
+		canvas.bind("<Button-3>", send_event("<Button-3>"))
+		canvas.bind("<B3-Motion>", send_event("<B3-Motion>"))
+		canvas.bind("<ButtonRelease-3>", send_event("<ButtonRelease-3>"))
+		
+		canvas.bind("<Key>", send_event("<Key>"))
+		
+		canvas.current_after = None
+		# # def clickevent(event):
+			# # self.canvas.focus_set()
+			# # self.getEvent(event.x,event.y,"click")
+		# # canvas.bind("<Button-1>", clickevent)
+		# # def unclickevent(event):
+			# # self.canvas.focus_set()
+			# # self.getEvent(event.x,event.y,"unclick")
+		# # canvas.bind("<ButtonRelease-1>", unclickevent)
+		
+		# # def rclickevent(event):
+			# # self.getEvent(event.x,event.y,"rclick")
+		# # canvas.bind("<Button-3>", rclickevent)
+		# # def unrclickevent(event):
+			# # self.getEvent(event.x,event.y,"unrclick")
+		# # canvas.bind("<ButtonRelease-3>", unrclickevent)
 		
 		def mmovevent(x,y):
 			def mmove(event):
@@ -498,37 +526,37 @@ class canvasManager():
 		canvas.bind("<Up>", mmovevent(0,-1))
 		canvas.bind("<Down>", mmovevent(0,1))
 		
-		def updatemousepos(event):
-			self.canvas_mx = event.x;
-			self.canvas_my = event.y;
-		canvas.bind("<Motion>", updatemousepos)
+		# # def updatemousepos(event):
+			# # self.canvas_mx = event.x;
+			# # self.canvas_my = event.y;
+		# # canvas.bind("<Motion>", updatemousepos)
 		#root.winfo_pointerxy()
 		
-		def typeachar(event):
-			if(event.char!=""):
-				#print(event.keysym)
-				char = event.char;
-				if(event.keysym=="BackSpace" or event.keysym=="Delete"):
-					char=" "
-				if(event.keysym=="Return"):
-					char = None
-				x=event.x
-				y=event.y
+		# # def typeachar(event):
+			# # if(event.char!=""):
+				# # #print(event.keysym)
+				# # char = event.char;
+				# # if(event.keysym=="BackSpace" or event.keysym=="Delete"):
+					# # char=" "
+				# # if(event.keysym=="Return"):
+					# # char = None
+				# # x=event.x
+				# # y=event.y
 				
-				if(event.keysym=="BackSpace"):
-					x-=fw
-				if(x>0 and y>0 and x<cw*fw and y<ch*fh):
-					if(event.keysym!="Return"):
-						self.listener.typechar(int(x/fw),int(y/fh),char)
-					if(self.istextmode):
-						if(event.keysym=="BackSpace"):
-							self.warpMouse(-1,0)
-						elif(event.keysym=="Return"):
-							self.warpMouse(-1,1)
+				# # if(event.keysym=="BackSpace"):
+					# # x-=fw
+				# # if(x>0 and y>0 and x<cw*fw and y<ch*fh):
+					# # if(event.keysym!="Return"):
+						# # self.listener.typechar(int(x/fw),int(y/fh),char)
+					# # if(self.istextmode):
+						# # if(event.keysym=="BackSpace"):
+							# # self.warpMouse(-1,0)
+						# # elif(event.keysym=="Return"):
+							# # self.warpMouse(-1,1)
 						
-						else:
-							self.warpMouse(1,0)
-		canvas.bind("<Key>",typeachar)
+						# # else:
+							# # self.warpMouse(1,0)
+		# # canvas.bind("<Key>",typeachar)
 		
 	def textmode(self,textset):
 		self.istextmode = textset
@@ -539,25 +567,40 @@ class canvasManager():
 				self.c.itemconfig(elem, width=do)
 				
 	def empty(self):
-		for i,line in enumerate(self.fg):
-				for j,fgpart in enumerate(line):
-					bgpart = self.bg[i][j]
-					self.c.itemconfig(fgpart, text=" ")
-					self.c.itemconfig(fgpart, fill=WHITE)
-					self.c.itemconfig(bgpart, fill=BLACK)
+		self.drawing.get_current_layer().remove_rect(0,0,80,20)
+		# for i,line in enumerate(self.fg):
+				# for j,fgpart in enumerate(line):
+					# bgpart = self.bg[i][j]
+					# self.c.itemconfig(fgpart, text=" ")
+					# self.c.itemconfig(fgpart, fill=WHITE)
+					# self.c.itemconfig(bgpart, fill=BLACK)
 					
+
 	def load_data(self,data):
 		for i,line in enumerate(data):
 			for j,elem in enumerate(line):
-				nchar, fgc, bgc = elem
-				if(j>=cw or i>=ch):
-					break
-				fgpart = self.fg[j][i]
-				bgpart = self.bg[j][i]
-				self.c.itemconfig(fgpart, text=nchar)
-				self.c.itemconfig(fgpart, fill=fgc)
-				self.c.itemconfig(bgpart, fill=bgc)
+				if(elem!=None):
+					fgc, bgc, nchar = elem
+					if(j>=cw or i>=ch):
+						break
+					fgpart = self.fg[i][j]
+					bgpart = self.bg[i][j]
+					self.c.itemconfig(fgpart, text=nchar)
+					self.c.itemconfig(fgpart, fill=fgc)
+					self.c.itemconfig(bgpart, fill=bgc)
 						
+	def load_positional_data(self,data):
+		for draw in data:
+			x,y, chardata = draw
+			if(chardata!=None):
+				fgc, bgc, nchar = chardata
+			
+			fgpart = self.fg[x][y]
+			bgpart = self.bg[x][y]
+			self.c.itemconfig(fgpart, text=nchar)
+			self.c.itemconfig(fgpart, fill=fgc)
+			self.c.itemconfig(bgpart, fill=bgc)
+					
 	def showAllChars(self,do):
 		if(do and len(self.colorsbackup)==0) or ((not do) and len(self.colorsbackup)!=0):
 			for i,line in enumerate(self.fg):
@@ -585,80 +628,81 @@ class canvasManager():
 						char = self.charsbackup.pop(0)
 						self.c.itemconfig(elem, text=char)
 						
-	def condputchar(self,x,y,char=None,fg=None,bg=None):
-		self.putchar(x,y,
-				(dochar.get() and char) or None,
-				(dofg.get() and fg) or None,
-				(dobg.get() and bg) or None)
-	def putchar(self,x,y,char=None,fg=None,bg=None):
-		print(char,fg,bg)
-		index = self.fg[x][y]
-		if(fg!=None):
-			self.c.itemconfig(index, fill=fg)
+	# def condputchar(self,x,y,char=None,fg=None,bg=None):
+		# self.putchar(x,y,
+				# (dochar.get() and char) or None,
+				# (dofg.get() and fg) or None,
+				# (dobg.get() and bg) or None)
+	# def putchar(self,x,y,char=None,fg=None,bg=None):
+		# print(char,fg,bg)
+		# index = self.fg[x][y]
+		# if(fg!=None):
+			# self.c.itemconfig(index, fill=fg)
 			
-		if(char!=None):
-			self.c.itemconfig(index, text=char[0])
+		# if(char!=None):
+			# self.c.itemconfig(index, text=char[0])
 			
-		index = self.bg[x][y]
-		if(bg!=None):
-			self.c.itemconfig(index, fill=bg)
+		# index = self.bg[x][y]
+		# if(bg!=None):
+			# self.c.itemconfig(index, fill=bg)
 	
 	def getEvent(self,x,y,e):
-		global curchar,curfg,curbg
+		print("getEvent called - should not be")
+		return
 		#print("received event in",x,y)
 		#transforms the event in X, Y, tool
 		#and sends it to drawingArea which will send it back
 		
-		if(self.listener!=None):
-			if e=="click":
-				#Start showing a char even if not moved
-				self.clicktool = tool
-				self.clickx = x
-				self.clicky = y
-			elif e=="unclick":
-				cc=0
-				if(self.clicktool=="Linebits"):
-					cc = ("`'´","-"+curchar+"-","_//|\\\\_")
-				elif(self.clicktool=="Pixels"):
-					cc = (" ▀▀▀▀▀▀▀▀▀█"," ░░░▒▓▓▓█"," ▄▄▄▄▄▄▄▄▄█")
-				elif(self.clicktool=="Box2"):
-					cc = ("║","═╝╝╝║╚╚╚═","═╝╝╝╩╚╚╚═","═╣╣╬╠╠═","═╗╗╗╦╔╔╔═","═╗╗╗║╔╔╔═","║")
-				elif(self.clicktool=="Box"):
-					cc = ("│","┘┴└","┘┴└","─┤┤┼├├─","┐┬┌","┐┬┌","│")
-				if(cc):
-					dx = int(x/fw)-int(self.clickx/fw)
-					dy = int(y/fh)-int(self.clicky/fh)
-					#c = ═║╚╝╠╣╦╩╬■►◄↕↨↑↓→←∟↔▲▼
-					h = int(len(cc)/2)
-					choosey = min(len(cc)-1,max(0,h+dy))
-					w = int(len(cc[choosey])/2)
-					choosex = min(len(cc[choosey])-1,max(0,w+dx))
+		# # if(self.listener!=None):
+			# # if e=="click":
+				# # #Start showing a char even if not moved
+				# # self.clicktool = tool
+				# # self.clickx = x
+				# # self.clicky = y
+			# # elif e=="unclick":
+				# # cc=0
+				# # if(self.clicktool=="Linebits"):
+					# # cc = ("`'´","-"+"+"+"-","_//|\\\\_")
+				# # elif(self.clicktool=="Pixels"):
+					# # cc = (" ▀▀▀▀▀▀▀▀▀█"," ░░░▒▓▓▓█"," ▄▄▄▄▄▄▄▄▄█")
+				# # elif(self.clicktool=="Box2"):
+					# # cc = ("║","═╝╝╝║╚╚╚═","═╝╝╝╩╚╚╚═","═╣╣╬╠╠═","═╗╗╗╦╔╔╔═","═╗╗╗║╔╔╔═","║")
+				# # elif(self.clicktool=="Box"):
+					# # cc = ("│","┘┴└","┘┴└","─┤┤┼├├─","┐┬┌","┐┬┌","│")
+				# # if(cc):
+					# # dx = int(x/fw)-int(self.clickx/fw)
+					# # dy = int(y/fh)-int(self.clicky/fh)
+					# # #c = ═║╚╝╠╣╦╩╬■►◄↕↨↑↓→←∟↔▲▼
+					# # h = int(len(cc)/2)
+					# # choosey = min(len(cc)-1,max(0,h+dy))
+					# # w = int(len(cc[choosey])/2)
+					# # choosex = min(len(cc[choosey])-1,max(0,w+dx))
 					
-					print(dx,"->",choosex,"\n",dy,"->",choosey,"\n",cc[choosey][choosex])
-					x=self.clickx
-					y=self.clicky
-					if(x>0 and y>0 and x<cw*fw and y<ch*fh):
-						self.putchar(int(x/fw),int(y/fh),
-							(dochar.get() and cc[choosey][choosex]) or None,
-							(dofg.get() and curfg) or None,
-							(dobg.get() and curbg) or None)
-				else:
-					if(x>0 and y>0 and x<cw*fw and y<ch*fh):
-						self.listener.click(int(x/fw),int(y/fh),0)
-			elif e=="rclick":
-				if(x>0 and y>0 and x<cw*fw and y<ch*fh):
-					fg,bg,c = self.getAt(int(x/fw),int(y/fh))
-					curchar = c or " "
-					curbg = bg
-					curfg = fg
+					# # print(dx,"->",choosex,"\n",dy,"->",choosey,"\n",cc[choosey][choosex])
+					# # x=self.clickx
+					# # y=self.clicky
+					# # if(x>0 and y>0 and x<cw*fw and y<ch*fh):
+						# # self.putchar(int(x/fw),int(y/fh),
+							# # (dochar.get() and cc[choosey][choosex]) or None,
+							# # (dofg.get() and curfg.get()) or None,
+							# # (dobg.get() and curbg.get()) or None)
+				# # else:
+					# # if(x>0 and y>0 and x<cw*fw and y<ch*fh):
+						# # self.listener.click(int(x/fw),int(y/fh),0)
+			# # elif e=="rclick":
+				# # if(x>0 and y>0 and x<cw*fw and y<ch*fh):
+					# # fg,bg,c = self.getAt(int(x/fw),int(y/fh))
+					# # curchar.set(c or " ")
+					# # curbg.set(bg)
+					# # curfg.set(fg)
 				
-	def getAt(self,x,y):
-		return (self.c.itemcget(self.fg[x][y],"fill"),
-				self.c.itemcget(self.bg[x][y],"fill"),
-				self.c.itemcget(self.fg[x][y],"text"))
+	# # def getAt(self,x,y):
+		# # return (self.c.itemcget(self.fg[x][y],"fill"),
+				# # self.c.itemcget(self.bg[x][y],"fill"),
+				# # self.c.itemcget(self.fg[x][y],"text"))
 		
-	def addListerner(self,listener):
-		self.listener = listener;
+	# def addListerner(self,listener):
+		# self.listener = listener;
 		
 	def warpMouse(self,x,y):
 		dx = x*fw
@@ -718,56 +762,16 @@ class canvasManager():
 			datatext+="\n"
 		return datatext
 	
-	
-class drawingArea():
-	"""
-		what needed:
-			self.image_index = 0
-			self.anim = [] #for each animation image, there are layers
-			self.last_layer = 0 
-			#nitpick: if the number of the layer is different, this number will not change until we really click
-			#Do we do by name? or by limiting the number of layers and doing "layer depths"
-			#I say we have 4~8 layers that can be empty, swapped
-			#Colors should be CHAR, COLOR_INDEX, COLOR_INDEX
-			#Transparency for each layer should be definable
-			self.sizes = [] #contains the sizes of each image and layer, and offsets
-			#those will appear as little boxes
-			self.image = None #must have an "update" function with X,Y or more
-			self.update_image(x,y)
-			self.image_dirty = [] #this contains 80*25 instead (screen size)
-			A selection, that can go all the layers deep if alt is pressed
-			"""
-			
-	#Just the areas, like my old ones
-	def __init__(self,canvas):
-		self.zones = []
-		self.drawCanvas = canvas
-		self.dc = canvas
-		for i in range(min(CH-2,CW-2,25)):
-			self.dc.putchar(i,i,chr(ord("a")+i),WHITE,RED)
-		
-	def move(self,x,y):
-		self.x=x
-		self.y=y
-	def draw():
-		pass
-	def click(self,x,y,tool):
-		if(tool==0):
-			#print("FG:",curfg,"BG:",curbg)
-			self.dc.condputchar(x,y,choice("▀▄█░▒▓"),None,None)
-			"""self.dc.putchar(x,y,
-							dobg and choice("▀▄█░▒▓") or None,
-							dofg and curfg or None,
-							dochar and curchar or None)"""
-		pass
-		
-	def typechar(self,x,y,char):
-		if(char!=""):
-			self.dc.condputchar(x,y,char,curfg,curbg)
-
+	def redraw(self, positions = None):
+		if(positions==None):
+			self.load_data(self.drawing.get_current_stack().combine_layers())
+		else:
+			for position in positions:
+				x,y = position
+				chardata = self.drawing.get_current_stack().layers[0].get(x,y)
 				
-		
-	
+				self.load_positional_data([(x,y,chardata)])
+
 app = App(root)
 root.mainloop()
 try:

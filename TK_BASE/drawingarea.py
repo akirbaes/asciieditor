@@ -4,11 +4,22 @@ from utilities import repr_data_bw
 MODIFICATION_COUNTER = 1
 W = 80
 H = 20
-try:
-	import colorama
-	colorama.init()
-except:
-	pass
+	
+"""
+This whole system is flawed when you have to update it.
+Why did I chose this system over a Commands-based one? http://blog.wolfire.com/2009/02/how-we-implement-undo/
+Because I wanted to include it in the Cases directly
+REDO FROM ZERO. Kind of.
+Commands are not possible since some actions are irreversible (lost info)
+So might need to remember modified pixels before/after
+The before could leech from the after of the previous action?
+Some commands could have optimised before/after based on what is done
+(Like moving a bunch of pixels or drawing a line)
+But at the end of the day it should be able to be converted to pixels
+Because we might want to combine several actions into one for optimisation reasons
+
+
+"""
 
 class Case():
 	"""Contains the data for the cases
@@ -19,14 +30,16 @@ class Case():
 	#dirty management is not up to level
 	def default():
 		return Case()
-	def __init__(self,fg=0,bg=0,char=" "):
+	def __init__(self,parent,fg="#000000",bg="#000000",char=" "):
+		self.parent = parent
 		self.fg_list = [(0,fg)]
 		self.bg_list = [(0,bg)]
 		self.char_list = [(0,char)]
 		self.dirty = True
 	def __iter__(self):
 		return (i for i in (self.fg(),self.bg(),self.char()))
-		
+	def get(self):
+		return self.fg(-1), self.bg(-1), self.char(-1)
 	def fg(self, modif = None):
 		if(modif==None):
 			modif = MODIFICATION_COUNTER
@@ -109,13 +122,14 @@ class Case():
 			return self.fg() == other.fg() and self.bg() == other.bg() and self.char() == other.char()
 		elif(isinstance(other,tuple)):
 			return self.fg(),self.bg(),self.char() == other
-
+	def __repr__(self):
+		return str(self.get())
 
 
 class Layer():
 	"""A layer contains W*H Cases
 	it has a transparency color
-	it is contained in a frame
+	it is contained in a stack
 	"""
 	MODE_NORMAL = 0
 	MODE_FGCOLOR = 1
@@ -126,15 +140,22 @@ class Layer():
 	MODE_SUBTRACT = 6 	#Add color ID value
 	MODE_WARMER = 7 	#Follow roulette
 	MODE_COLDER = 8 	#Follow roulette
+	def notify_parent(self, data):
+		self.parent.notify_parent(data)
+		#TODO idea: notify the higher layers instead, until the top layer notifies the parent
+		#Unless the place is occupied, in this case stop the propagation
+		#Or when you notify the parent, the parent checks
+	
 	def _is_inside_(self,x,y):
 		return self.x<=x<self.x+self.w and self.y<=y<self.y+self.h
 	def _is_outside_(self,x,y):
 		return not self._is_inside_(x,y)
 	
-	def __init__(self):
+	def __init__(self, parent):
+		self.parent = parent
 		self.empty = True
 		self.pixels = 0
-		self.cases = [[Case() for y in range(H)] for x in range(W)]
+		self.cases = [[Case(self) for y in range(H)] for x in range(W)]
 		self.x = 0
 		self.y = 0
 		self.w = W
@@ -149,18 +170,25 @@ class Layer():
 		self.set_bg = self.putbg
 		self.set_char = self.putchar
 		self.set_fg = self.putfg
-	def set_transparency(self,color):
+	def set_transparency(self, color, id = None):
 		self._transparency_color_ = color
+		self.notify_parent(("setalpha",color,id))
 	def transparency(self):
 		return (self._transparency_color_,self._transparency_color_," ")
-	def put(self,x,y,data):
+	def put(self,x,y,data, id = None):
+		#print("Old:",self.cases[x][y].get())
 		self.cases[x][y].set(data)
-	def putchar(self,x,y,char):
+		#print("New:",self.cases[x][y].get())
+		self.notify_parent(("put",x,y, id))
+	def putchar(self,x,y,char, id = None):
 		self.cases[x][y].set_char(char)
-	def putfg(self,x,y,fg):
+		self.notify_parent(("put",x,y, id))
+	def putfg(self,x,y,fg, id = None):
 		self.cases[x][y].set_fg(fg)
-	def putbg(self,x,y,bg):
+		self.notify_parent(("put",x,y, id))
+	def putbg(self,x,y,bg, id = None):
 		self.cases[x][y].set_bg(bg)
+		self.notify_parent(("put",x,y, id))
 	def get_bg(self,x,y):
 		return self.cases[x][y].bg()
 	def get_fg(self,x,y):
@@ -168,12 +196,12 @@ class Layer():
 	def get_char(self,x,y):
 		return self.cases[x][y].char()
 	def get(self,x,y):
-		return tuple(self.cases[x][y])
+		return self.cases[x][y].get()
 	def get_nontransparent(self,x,y):
 		if(self.is_transparent(x,y) or self._is_outside_(x,y)):
 			return None
 		else:
-			return tuple(self.cases[x][y])
+			return self.get(x,y)
 		
 	def is_transparent(self,x,y):
 		return self.allow_transparency and (self.get(x,y) == self.transparency())
@@ -194,7 +222,7 @@ class Layer():
 		for px in range(x,x+w):
 			column = []
 			for py in range(y,y+h):
-				if(self._is_inside_(px,py) and not is_transparent(px,py)):
+				if(self._is_inside_(px,py) and not self.is_transparent(px,py)):
 					column.append(self.cases[px][py])
 				else:
 					column.append(None)
@@ -230,7 +258,8 @@ class Layer():
 		for px in range(x,x+w):
 			for py in range(y,y+h):
 				self.put(px,py,self.transparency)
-		return result
+		
+		self.notify_parent(("rect",x,y,w,h, id))
 	def shift_zone(self,dx,dy):
 		#[TODO] test boundaries
 		selection = self.select_rect(self.x,self.y,self.w,self.h)
@@ -242,13 +271,28 @@ class Layer():
 			for y in range(self.y,self.y+self.h):
 				self.put(x,y,selection[x-self.x][y-self.y])
 		
-class Frame():
+class Stack():
 	canvas = None
-	def __init__(self):
-		self.layers = []
-		for i in range(8):
-			self.layers.append(Layer())
+	current_layer_id = 0
+	
+	def get_current_layer(self):
+		return self.layers[self.current_layer_id]
+	
+	def notify_parent(self, data):
+		if(self.parent != None):
+			self.parent.notify_update(data)
+		
+	def __init__(self, parent = None):
+		self.layers = [Layer(self)]
+		self.parent = parent
 		self.image_speed = 100
+	
+	def add_layer(self):
+		self.layers.append(Layer(self))
+		
+	def set_image_speed(self, msec):
+		self.image_speec = msec
+		
 	def combine_layers(self):
 		result = []
 		
@@ -257,35 +301,78 @@ class Frame():
 			for y in range(H):
 				color = None
 				for layer in self.layers:
-					if layer.mode == Layer.MODE_NORMAL:
-						color = layer.get_nontransparent(x,y)
-						if(color!=None):
-							break
+					color = layer.get(x,y)
+					# if(color[0]!="#000000"):
+						# print(color)
+					# if layer.mode == Layer.MODE_NORMAL:
+						# color = layer.get_nontransparent(x,y)
+						# if(color!=None):
+							# break
 				column.append(color)
 			result.append(column)
+		#print(str(self.layers[0].cases))
 		return result
 		
-def test():
-	global MODIFICATION_COUNTER
-	from random import randint
-	p = Frame()
-	for i,layer in enumerate(p.layers):
-		for j in range(20):
-			x=randint(0,W-1)
-			y=randint(0,H-1)
-			layer.put(x,y ,(5,0,chr(ord("A")+i)))
-			#print(x,y,layer.get(x,y))
-		MODIFICATION_COUNTER +=1
+# # def test():
+	# # global MODIFICATION_COUNTER
+	# # from random import randint
+	# # p = Stack()
+	# # for i,layer in enumerate(p.layers):
+		# # for j in range(20):
+			# # x=randint(0,W-1)
+			# # y=randint(0,H-1)
+			# # layer.put(x,y ,(5,0,chr(ord("A")+i)))
+			# # # print(x,y,layer.get(x,y))
+		# # MODIFICATION_COUNTER +=1
 			
-	for i in range(8):
-		result = p.combine_layers()
-		#print(result)
-		str_result = repr_data(result)
-		print(str_result)
-		MODIFICATION_COUNTER -= 1
+	# # for i in range(8):
+		# # result = p.combine_layers()
+		# # # print(result)
+		# # str_result = repr_data(result)
+		# # print(str_result)
+		# # MODIFICATION_COUNTER -= 1
 		
-test()	
-class drawingArea():
+	# # for i in range(4):
+		# # result = p.combine_layers()
+		# # # print(result)
+		# # str_result = repr_data(result)
+		# # print(str_result)
+		# # MODIFICATION_COUNTER += 1
+	# # MODIFICATION_COUNTER = 1
+	# # # Need something different to break the future modifs
+	# # # Harder to update
+	# # result = p.combine_layers()
+	# # # print(result)
+	# # str_result = repr_data(result)
+	# # print(str_result)
+	# # input()
+	
+	# # for i,layer in enumerate(p.layers):
+		# # x=randint(0,W-1)
+		# # y=randint(0,H-1)
+		# # layer.put(x,y ,(5,0,chr(ord("a")+i)))
+	# # MODIFICATION_COUNTER +=1
+	# # for i in range(8):
+		# # result = p.combine_layers()
+		# # # print(result)
+		# # str_result = repr_data(result)
+		# # print(str_result)
+		# # MODIFICATION_COUNTER += 1
+		
+		
+		
+# # test()	
+class Drawing():
+	def get_current_layer(self):
+		return self.stacks[self.image_index].get_current_layer()
+	def get_current_stack(self):
+		return self.stacks[self.image_index]
+	def notify_update(self,data):
+		if(data[0]=="put"):
+			self.canvas.redraw(positions = [(data[1],data[2])])
+		else:
+			self.canvas.redraw()
+		#print("Redrawing")
 	"""
 		what needed:
 			self.image_index = 0
@@ -306,30 +393,33 @@ class drawingArea():
 			"""
 			
 	#Just the areas, like my old ones
-	def __init__(self,canvas):
-		self.zones = []
-		self.drawCanvas = canvas
-		self.dc = canvas
-		for i in range(min(CH-2,CW-2,25)):
-			self.dc.putchar(i,i,chr(ord("a")+i),WHITE,RED)
+	def set_canvas(self,drawingmanager):
+		self.canvas = drawingmanager
 		
-	def move(self,x,y):
-		self.x=x
-		self.y=y
-	def draw():
-		pass
-	def click(self,x,y,tool):
-		if(tool==0):
-			#print("FG:",curfg,"BG:",curbg)
-			self.dc.condputchar(x,y,choice("▀▄█░▒▓"),None,None)
-			"""self.dc.putchar(x,y,
-							dobg and choice("▀▄█░▒▓") or None,
-							dofg and curfg or None,
-							dochar and curchar or None)"""
-		pass
+	def __init__(self):
+		self.image_index = 0
+		self.stacks = [Stack(self)]
 		
-	def typechar(self,x,y,char):
-		if(char!=""):
-			self.dc.condputchar(x,y,char,curfg,curbg)
-
+		# for i in range(min(CH-2,CW-2,25)):
+			# self.canvas.putchar(i,i,chr(ord("a")+i),WHITE,RED)
+	
+	# # def move(self,x,y):
+		# # self.x=x
+		# # self.y=y
+	# # def draw():
+		# # pass
+	# # def click(self,x,y,tool):
+		# # if(tool==0):
+			# # #print("FG:",curfg,"BG:",curbg)
+			# # self.dc.condputchar(x,y,choice("▀▄█░▒▓"),None,None)
+			# # """self.dc.putchar(x,y,
+							# # dobg and choice("▀▄█░▒▓") or None,
+							# # dofg and curfg or None,
+							# # dochar and curchar or None)"""
+		# # pass
+		
+	# # def typechar(self,x,y,char):
+		# # if(char!=""):
+			# # self.dc.condputchar(x,y,char,curfg,curbg)
+	
 				
