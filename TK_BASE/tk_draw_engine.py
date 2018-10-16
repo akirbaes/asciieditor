@@ -70,10 +70,6 @@ def init_pencilcolor(masterframe):
 
 class App:
 	def __init__(self,master):
-		
-		self.currentFGButton = None
-		self.currentBGButton = None
-
 		self.allTools = []
 		#MAINFRAME
 		mainFrame = Frame(master)
@@ -382,54 +378,138 @@ class App:
 		
 	def setCharacters(self,charactersFrame):
 		
-		label = Label(charactersFrame,text="Foreground")
-		label.pack(side=TOP)
-		fg1 = Frame(charactersFrame)
-		fg1.pack(side=TOP)
+		topFrame = Frame(charactersFrame)
+		topFrame.pack(side=TOP)
 		
-		def gensetfg(c,b):
-			def setfg():
-				curfg.set(c); 
-				if(self.currentFGButton!=None):
-					self.currentFGButton.config(state="normal",relief="raised")
-				self.currentFGButton=b
-				b.config(state="disabled",relief="ridge")
-			return setfg
+		def validchar(char):
+			return len(char) <= 2 and char in DRAWABLE_CHARACTERS
+		#https://stackoverflow.com/questions/4140437/interactively-validating-entry-widget-content-in-tkinter/35554720#35554720
+		#topFrame.validchar = validchar
+		#vcmd = topFrame.register(topFrame.validchar,'%P')
+		charEntry = Entry(topFrame,textvariable = curchar, width = 1, validate = "all", font = monofont)
+		charEntry['validatecommand'] = (charEntry.register(validchar), '%P')
+		charEntry.pack(side=LEFT)
+		
+		def reverse_color(color):
+			return "#%06x"%(int("FFFFFF",16)-int(color[1:],16))
+		
+		fgButton = Button(topFrame,background=curfg.get(),borderwidth=2, width = charEntry.winfo_width(), height = charEntry.winfo_height())
+		fgButton.selector = None
+		def createFGSelector():
+			parent = fgButton
+			if(parent.selector == None or not parent.selector.winfo_exists()):
+				selector = Toplevel(parent, borderwidth=2, relief="groove")
+				selector.focus_set()
+				parent.selector = selector
+				selector.wm_overrideredirect(True)
+				def delete(*args):
+					selector.destroy()
+				selector.bind("<FocusOut>",delete)
+				
+				label = Label(selector,text="Foreground")
+				label.pack(side=TOP)
+				fg1 = Frame(selector)
+				fg1.pack(side=TOP)
 			
-		def gensetbg(c,b):
-			def setbg():
-				curbg.set(c); 
-				if(self.currentBGButton!=None):
-					self.currentBGButton.config(state="normal",relief="raised")
-				self.currentBGButton=b
-				b.config(state="disabled",relief="ridge")
-			return setbg
-		
-		for c in colors:
-			#print("Curfg:",curfg,"Put c",c)
-			b = Button(fg1,background=c,borderwidth=5)
-			b.config(command = gensetfg(c,b))
-			b.pack(side=LEFT)
-			if(c==WHITE):
-				b.invoke()
-		fg2 = Frame(charactersFrame)
-		fg2.pack(side=TOP)
-		for c in colors2:
-			b = Button(fg2,background=c,borderwidth=5)
-			b.config(command = gensetfg(c,b))
-			b.pack(side=LEFT)
-		
-		label = Label(charactersFrame,text="Background")
-		label.pack(side=TOP)
-		bg = Frame(charactersFrame)
-		bg.pack(side=TOP)
-		for c in colors:
-			b = Button(bg,background=c,borderwidth=5)
-			b.config(command = gensetbg(c,b))
-			b.pack(side=LEFT)
 			
-			if(c==BLACK):
-				b.invoke()
+				selector.currentFGButton = None
+				def gensetfg(c,b):
+					def setfg():
+						curfg.set(c); 
+						if(selector.currentFGButton!=None):
+							selector.currentFGButton.config(state="normal",relief="raised",text=" ") #unselect
+						selector.currentFGButton=b
+						b.config(state="disabled",relief="ridge",text="X") #select
+					return setfg
+					
+				
+				for c in colors:
+					#print("Curfg:",curfg,"Put c",c)
+					b = Button(fg1,background=c,disabledforeground=reverse_color(c),borderwidth=2,text=" ", font = monofont) #creation 1
+					b.config(command = gensetfg(c,b))
+					b.pack(side=LEFT)
+					if(c==curfg.get()):
+						b.invoke()
+						
+				fg2 = Frame(selector)
+				fg2.pack(side=TOP)
+				for c in colors2:
+					b = Button(fg2,background=c,disabledforeground=reverse_color(c),borderwidth=2,text=" ",font = monofont) #creation 2
+					b.config(command = gensetfg(c,b))
+					b.pack(side=LEFT)
+					if(c==curfg.get()):
+						b.invoke()
+				selector.update()
+				selector.geometry(("+%d+%d")%(parent.winfo_rootx()-parent.winfo_width()/2-selector.winfo_width()/2,parent.winfo_rooty()))
+			else:
+				selector = parent.selector
+				selector.update()
+				selector.geometry(("+%d+%d")%(parent.winfo_rootx()-parent.winfo_width()/2-selector.winfo_width()/2,parent.winfo_rooty()))
+				
+		def updateFGButton(*args):
+			fgButton.config(background=curfg.get())
+		curfg.trace_add("write",updateFGButton)
+		fgButton.config(command=createFGSelector)
+		fgButton.pack(side=LEFT)
+		
+			
+			
+		bgButton = Button(topFrame,background=curbg.get(),borderwidth=2, width = charEntry.winfo_width(), height = charEntry.winfo_height())
+		bgButton.selector = None
+		def createBGSelector():
+			parent = bgButton
+			if(parent.selector == None or not parent.selector.winfo_exists()):
+				selector = Toplevel(parent, borderwidth=2, relief="groove")
+				selector.focus_set()
+				parent.selector = selector
+				selector.wm_overrideredirect(True)
+				def delete(*args):
+					selector.destroy()
+				selector.bind("<FocusOut>",delete)
+				
+				selector.currentBGButton = None
+				def gensetbg(c,b):
+					def setbg():
+						curbg.set(c); 
+						if(selector.currentBGButton!=None):
+							selector.currentBGButton.config(state="normal",relief="raised",text=" ") #unselect
+						selector.currentBGButton=b
+						b.config(state="disabled",relief="ridge",text="X") #select
+					return setbg
+				label = Label(selector,text="Background")
+				label.pack(side=TOP)
+				bg = Frame(selector)
+				bg.pack(side=TOP)
+				for c in colors:
+					b = Button(bg,background=c,disabledforeground=reverse_color(c),borderwidth=2,text=" ",font = monofont) #creation
+					b.config(command = gensetbg(c,b))
+					b.pack(side=LEFT)
+					
+					if(c==curbg.get()):
+						b.invoke()
+				
+				selector.update()
+				selector.geometry(("+%d+%d")%(parent.winfo_rootx()-parent.winfo_width()/2-selector.winfo_width()/2,parent.winfo_rooty()))
+			else:
+				selector = parent.selector
+				selector.update()
+				selector.geometry(("+%d+%d")%(parent.winfo_rootx()-parent.winfo_width()/2-selector.winfo_width()/2,parent.winfo_rooty()))
+		def updateBGButton(*args):
+			bgButton.config(background=curbg.get())
+		curbg.trace_add("write",updateBGButton)
+		bgButton.config(command=createBGSelector)
+		bgButton.pack(side=LEFT)
+		
+		
+		def select_all(event):
+			charEntry.selection_range(0, END)
+		def focus(event):
+			charEntry.focus()
+		charEntry.bind("<FocusIn>", select_all)
+		charEntry.bind("<Enter>", focus)
+		charEntry.bind("<Key>", select_all)
+		
+		
 				
 		label = Label(charactersFrame,text="Colors")
 		label.pack(side=TOP)
