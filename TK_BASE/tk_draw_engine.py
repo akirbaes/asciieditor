@@ -509,6 +509,14 @@ class App:
 		charEntry.bind("<Enter>", focus)
 		charEntry.bind("<Key>", select_all)
 		
+		exampleLabel = Label(charactersFrame,textvariable=curchar,background=curbg.get(),foreground=curfg.get(),font=monofont)
+		exampleLabel.pack(side=TOP)
+		def updateExampleBG(*args):
+			exampleLabel.config(background=curbg.get())
+		def updateExampleFG(*args):
+			exampleLabel.config(foreground=curfg.get())
+		curfg.trace_add("write",updateExampleFG)
+		curbg.trace_add("write",updateExampleBG)
 		
 				
 		label = Label(charactersFrame,text="Colors")
