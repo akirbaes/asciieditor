@@ -40,7 +40,7 @@ import sys
 flush = sys.stdout.flush
 
 if(osname == "nt"):
-	fh = 18
+	fh = 20
 	monofont = font.Font(family="lucida console",size = -fh)
 else:
 	fh = 25
@@ -149,7 +149,7 @@ class App:
 			if(filename):
 				save_engine.set_current_filename(filename)
 				root.title(filename)
-				self.saveFile()
+				saveFile()
 			#file = FileDialog.asksaveasfile(mode='w') #already creates it
 			
 		def updatem():
@@ -185,6 +185,8 @@ class App:
 		saveplace = open(savename,"w",encoding="utf-8")
 		saveplace.write(data)
 		saveplace.close()
+	
+	
 	
 	def loadDrawing(self,filename):
 		file = open(filename,"r",encoding="utf-8")
@@ -413,11 +415,11 @@ class App:
 					selector.destroy()
 				selector.bind("<FocusOut>",delete)
 				
-				label = Label(selector,text="Foreground")
-				label.pack(side=TOP)
+				label = Label(selector,text="Foreground [x]")
+				label.pack(side=TOP,fill="x")
 				fg1 = Frame(selector)
 				fg1.pack(side=TOP)
-			
+				label.bind("<1>",delete)
 			
 				selector.currentFGButton = None
 				def gensetfg(c,b):
@@ -447,11 +449,15 @@ class App:
 					if(c==curfg.get()):
 						b.invoke()
 				selector.update()
-				selector.geometry(("+%d+%d")%(parent.winfo_rootx()-parent.winfo_width()/2-selector.winfo_width()/2,parent.winfo_rooty()))
+				xx = min(root.winfo_rootx()+root.winfo_width()-selector.winfo_width(),
+						parent.winfo_rootx()-parent.winfo_width()/2-selector.winfo_width()/2)
+				selector.geometry(("+%d+%d")%(xx,parent.winfo_rooty()))
 			else:
 				selector = parent.selector
 				selector.update()
-				selector.geometry(("+%d+%d")%(parent.winfo_rootx()-parent.winfo_width()/2-selector.winfo_width()/2,parent.winfo_rooty()))
+				xx = min(root.winfo_rootx()+root.winfo_width()-selector.winfo_width(),
+						parent.winfo_rootx()-parent.winfo_width()/2-selector.winfo_width()/2)
+				selector.geometry(("+%d+%d")%(xx,parent.winfo_rooty()))
 				
 		def updateFGButton(*args):
 			fgButton.config(background=curfg.get())
@@ -483,8 +489,9 @@ class App:
 						selector.currentBGButton=b
 						b.config(state="disabled",relief="ridge",text="X") #select
 					return setbg
-				label = Label(selector,text="Background")
-				label.pack(side=TOP)
+				label = Label(selector,text="Background [x]")
+				label.pack(side=TOP,fill="x")
+				label.bind("<1>",delete)
 				bg = Frame(selector)
 				bg.pack(side=TOP)
 				for c in colors:
@@ -496,11 +503,15 @@ class App:
 						b.invoke()
 				
 				selector.update()
-				selector.geometry(("+%d+%d")%(parent.winfo_rootx()-parent.winfo_width()/2-selector.winfo_width()/2,parent.winfo_rooty()))
+				xx = min(root.winfo_rootx()+root.winfo_width()-selector.winfo_width(),
+						parent.winfo_rootx()-parent.winfo_width()/2-selector.winfo_width()/2)
+				selector.geometry(("+%d+%d")%(xx,parent.winfo_rooty()))
 			else:
 				selector = parent.selector
 				selector.update()
-				selector.geometry(("+%d+%d")%(parent.winfo_rootx()-parent.winfo_width()/2-selector.winfo_width()/2,parent.winfo_rooty()))
+				xx = min(root.winfo_rootx()+root.winfo_width()-selector.winfo_width(),
+						parent.winfo_rootx()-parent.winfo_width()/2-selector.winfo_width()/2)
+				selector.geometry(("+%d+%d")%(xx,parent.winfo_rooty()))
 		def updateBGButton(*args):
 			bgButton.config(background=curbg.get())
 		curbg.trace_add("write",updateBGButton)
@@ -516,7 +527,7 @@ class App:
 		charEntry.bind("<Enter>", focus)
 		charEntry.bind("<Key>", select_all)
 		
-		exampleLabel = Label(charactersFrame,textvariable=curchar,background=curbg.get(),foreground=curfg.get(),font=monofont)
+		exampleLabel = Label(charactersFrame,textvariable=curchar,background=curbg.get(),foreground=curfg.get(),font=monofont,borderwidth=0)
 		exampleLabel.pack(side=TOP)
 		def updateExampleBG(*args):
 			exampleLabel.config(background=curbg.get())
@@ -525,33 +536,47 @@ class App:
 		curfg.trace_add("write",updateExampleFG)
 		curbg.trace_add("write",updateExampleBG)
 		charEntry.update()
-		cew = charEntry.winfo_width()
-		ceh = charEntry.winfo_height()
-		print(cew,ceh)
+		cew = exampleLabel.winfo_width()
+		ceh = exampleLabel.winfo_height()
 		
 		paletteButton = Button(charactersFrame,text="↓")
 		paletteButton.pack(side=TOP)
-		paletteFrame = Frame(charactersFrame,width=cew*8,height=ceh*8)
+		paletteFrame = Frame(charactersFrame,width=cew*8+4+8*4,height=ceh*8+4+8*4,relief="ridge",borderwidth=2)
 		paletteFrame.pack(side=TOP)
 		paletteFrame.pack_propagate(0)
+		paletteFrame.grid_propagate(0)
 		
 		def paletteColor(parent,f,b,c):
 			# f,b,c = fgvar.get(), bgvar.get(), charvar.get()
 			#actually, use my own, made of a label, that can be selected without having focus, and switched 
-			color_button = Button(parent,
-				bg=b,fg=f,text=c,borderwidth=0,font=monofont)
-			color_button.pack(side=LEFT)
+			color_button = Label(parent,relief="solid",
+				bg=b,fg=f,text=c,borderwidth=0,font=monofont,activebackground=reverse_color(b),activeforeground=reverse_color(f),
+				highlightthickness=2,highlightcolor="red")
+				
+			number = len(parent.winfo_children())-1
+			#color_button.pack(side=LEFT)
+			color_button.grid(column=number%8, row=number//8)
+			# print(number%8,number//8)
+			flush()
 			
-			parent.config(width=cew*8)
 			def delete(*args):
 				color_button.destroy()
 			color_button.bind("<Delete>", delete)
-			def setColor():
+			def setColor(*args):
 				curfg.set(f)
 				curbg.set(b)
 				curchar.set(c)
 				color_button.focus_set()
-			color_button.config(command=setColor)
+				color_button.config(state=ACTIVE)
+				#color_button.config(relief="sunken",borderwidth=2)
+			color_button.bind("<1>",setColor)
+			def leave(*args):
+				color_button.config(state=NORMAL)
+				#color_button.config(relief="sunken",borderwidth=0)
+				pass
+			color_button.bind("<Leave>",leave)
+				
+				
 			
 			
 		def putIntoPalette():
@@ -710,13 +735,14 @@ class DrawingManager():
 			for j,elem in enumerate(line):
 				if(elem!=None):
 					fgc, bgc, nchar = elem
-					if(j>=cw or i>=ch):
+					if(i>=cw or j>=ch):
 						break
 					fgpart = self.fg[i][j]
 					bgpart = self.bg[i][j]
-					self.c.itemconfig(fgpart, text=nchar)
-					self.c.itemconfig(fgpart, fill=fgc)
-					self.c.itemconfig(bgpart, fill=bgc)
+					self.drawing.get_current_layer().put(i,j,(fgc,bgc,nchar))
+					#self.c.itemconfig(fgpart, text=nchar)
+					#self.c.itemconfig(fgpart, fill=fgc)
+					#self.c.itemconfig(bgpart, fill=bgc)
 						
 	def load_positional_data(self,data):
 		for draw in data:
