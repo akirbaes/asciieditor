@@ -40,7 +40,7 @@ import sys
 flush = sys.stdout.flush
 
 if(osname == "nt"):
-	fh = 20
+	fh = 18
 	monofont = font.Font(family="lucida console",size = -fh)
 else:
 	fh = 25
@@ -86,16 +86,16 @@ class App:
 		
 		self.charactersFrame = Frame(self.parametersFrame)
 		self.charactersFrame.pack(side=TOP,anchor="n")
-		self.setCharacters(self.charactersFrame)
+		self.setColorFunctions(self.charactersFrame)
 		
 		self.toolsFrame = Frame(mainFrame)
 		self.toolsFrame.pack(side=TOP,fill=BOTH,expand=True)
 
 		self.displayFrame = Frame(mainFrame)
-		self.displayFrame.pack(side=LEFT)
+		self.displayFrame.pack(side=TOP,fill=BOTH,expand=True)
 			
 		self.canvas = Canvas(self.displayFrame, width=FW*CW, height=FH*CH)
-		self.canvas.pack()
+		self.canvas.pack(side=TOP)
 		
 		self.drawing = Drawing()
 		self.canvas_drawing = DrawingManager(self.canvas, self.drawing)
@@ -379,7 +379,7 @@ class App:
 		
 		
 		
-	def setCharacters(self,charactersFrame):
+	def setColorFunctions(self,charactersFrame):
 		
 		topFrame = Frame(charactersFrame)
 		topFrame.pack(side=TOP)
@@ -400,7 +400,7 @@ class App:
 			#https://stackoverflow.com/questions/13998901/generating-a-random-hex-color-in-python
 			return "#%06x"%(int("FFFFFF",16)-int(color[1:],16))
 		
-		fgButton = Button(topFrame,text=" ",background=curfg.get(),borderwidth=2, width = charEntry.winfo_width(), height = charEntry.winfo_height())
+		fgButton = Button(topFrame,text=" ",background=curfg.get(),borderwidth=2, width = 1, height = 1)
 		fgButton.selector = None
 		def createFGSelector():
 			parent = fgButton
@@ -461,7 +461,7 @@ class App:
 		
 			
 			
-		bgButton = Button(topFrame,background=curbg.get(),borderwidth=2, width = charEntry.winfo_width(), height = charEntry.winfo_height())
+		bgButton = Button(topFrame,background=curbg.get(),borderwidth=2, width = 1, height = 1)
 		bgButton.selector = None
 		def createBGSelector():
 			parent = bgButton
@@ -524,12 +524,16 @@ class App:
 			exampleLabel.config(foreground=curfg.get())
 		curfg.trace_add("write",updateExampleFG)
 		curbg.trace_add("write",updateExampleBG)
-		
+		charEntry.update()
+		cew = charEntry.winfo_width()
+		ceh = charEntry.winfo_height()
+		print(cew,ceh)
 		
 		paletteButton = Button(charactersFrame,text="↓")
 		paletteButton.pack(side=TOP)
-		paletteFrame = Frame(charactersFrame)
+		paletteFrame = Frame(charactersFrame,width=cew*8,height=ceh*8)
 		paletteFrame.pack(side=TOP)
+		paletteFrame.pack_propagate(0)
 		
 		def paletteColor(parent,f,b,c):
 			# f,b,c = fgvar.get(), bgvar.get(), charvar.get()
@@ -537,6 +541,8 @@ class App:
 			color_button = Button(parent,
 				bg=b,fg=f,text=c,borderwidth=0,font=monofont)
 			color_button.pack(side=LEFT)
+			
+			parent.config(width=cew*8)
 			def delete(*args):
 				color_button.destroy()
 			color_button.bind("<Delete>", delete)
