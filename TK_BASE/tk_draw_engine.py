@@ -42,9 +42,13 @@ flush = sys.stdout.flush
 if(osname == "nt"):
 	fh = 20
 	monofont = font.Font(family="lucida console",size = -fh)
+	monosmall = font.Font(family="lucida console",size = -fh//2)
+	monobig = font.Font(family="lucida console",size = -fh*2)
 else:
 	fh = 25
 	monofont = font.Font(family="Ubuntu Mono",size = -fh)
+	monosmall = font.Font(family="Ubuntu Mono",size = -fh//2)
+	monobig = font.Font(family="Ubuntu Mono",size = -fh*2)
 fw = monofont.measure("M")
 FH=fh
 FW=fw
@@ -528,7 +532,7 @@ class App:
 		charEntry.bind("<Enter>", focus)
 		charEntry.bind("<Key>", select_all)
 		
-		exampleLabel = Label(charactersFrame,textvariable=curchar,background=curbg.get(),foreground=curfg.get(),font=monofont,borderwidth=0)
+		exampleLabel = Label(charactersFrame,textvariable=curchar,background=curbg.get(),foreground=curfg.get(),font=monobig,borderwidth=0)
 		exampleLabel.pack(side=TOP)
 		def updateExampleBG(*args):
 			exampleLabel.config(background=curbg.get())
@@ -537,8 +541,8 @@ class App:
 		curfg.trace_add("write",updateExampleFG)
 		curbg.trace_add("write",updateExampleBG)
 		charEntry.update()
-		cew = exampleLabel.winfo_width()
-		ceh = exampleLabel.winfo_height()
+		cew = exampleLabel.winfo_width()/2
+		ceh = exampleLabel.winfo_height()/2
 		
 		paletteButton = Button(charactersFrame,text="↓")
 		paletteButton.pack(side=TOP)
@@ -585,15 +589,28 @@ class App:
 		paletteButton.config(command=putIntoPalette)
 		
 		
-		"""
-		label = Label(charactersFrame,text="Colors")
-		label.pack(side=TOP)
+		
 		col = Frame(charactersFrame)
 		col.pack(side=TOP)
+		print(len(abc))
 		for i,c in enumerate(DRAWABLE_CHARACTERS):
-			l = Label(col,text=c)
-			l.grid(column=int(i%16),row=int(i/16))
-		"""
+			c = c.strip()
+			# try:
+				# print(i,repr(c))
+				# flush()
+			# except:
+				# pass
+			
+			if(c!=""):
+				l = Label(col,text=c,font=monosmall)
+				def gen(character):
+					def setcChar(event):
+						curchar.set(character)
+					return setcChar
+				l.grid(column=int(i%16),row=int(i/16))
+				l.bind("<Button-1>",gen(c))
+				print(i)
+		
 class DrawingManager():
 	#Hides the real canvas
 	#For now it also holds the chars and colors data, but I have to separate view from data later on...
