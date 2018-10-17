@@ -81,15 +81,33 @@ def ansistring_to_charcolorindextriplet(ansistring,fgstart = WHITE, bgstart = BL
 					bg = BACKGROUND_COLORS[nbg]
 		else:
 			if(ansistring[i] in DRAWABLE_CHARACTERS):
-				currentline.append((ansistring[i],fg,bg))
+				currentline.append((fg,bg,ansistring[i]))
 			elif(ansistring[i]=="\n"):
 				alldata.append(currentline)
 				currentline = []
 			else:
-				currentline.append(("?",fg,bg))
+				currentline.append((fg,bg,"?"))
 		i+=1
-	return alldata
+	return transpose(rectangularise(alldata))
 	
+def rectangularise(data):
+	linesize = 0
+	for line in data:
+		linesize = max(len(line),linesize)
+	for index, line in enumerate(data):
+		if(len(line)<linesize):
+			line.extend([("#000000","#000000"," ") for x in range(linesize-len(line))])
+	return data
+	
+def transpose(data):
+	result = []
+	for j in range(len(data[0])):
+		line = []
+		for i in range(len(data)):
+			line.append(data[i][j])
+		result.append(line)
+	return result
+
 
 def nextEscape(string,startpos):
 	index = string.find("\x1b[",startpos)

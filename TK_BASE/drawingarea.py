@@ -3,7 +3,7 @@ from utilities import repr_data_bw
 #In construction, untested yet
 MODIFICATION_COUNTER = 1
 W = 80
-H = 20
+H = 25
 	
 """
 This whole system is flawed when you have to update it.

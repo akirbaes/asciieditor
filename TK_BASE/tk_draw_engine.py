@@ -128,6 +128,7 @@ class App:
 			#file = FileDialog.askopenfile(mode='r')
 			#filename = FileDialog.askopenfilename() #plural is possible
 		self.menu_recent=[]
+		
 		def openRecent(number):
 			def openR():
 				filename = save_engine.get_recent_filename(number)

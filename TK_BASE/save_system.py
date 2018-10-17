@@ -10,6 +10,26 @@ class SaveSystem:
 		else:
 			self.currentName = filename
 		self.recent_files=[""]*15
+		self.load_recent()
+		
+	def save_recent(self):
+		f = open("recent.ini","w")
+		for filename in self.recent_files:
+			f.write(filename+"\n")
+		
+	def load_recent(self):
+		self.recent_files = []
+		try:
+			f = open("recent.ini","r")
+			for filename in f.readlines():
+				filename = filename.strip()
+				if(filename!=""):
+					self.recent_files.append(filename)
+		except:
+			self.recent_files=[""]*15
+			self.save_recent()
+		self.recent_files.extend([""]*(15-len(self.recent_files)))
+		
 	def get_current_filename(self):
 		return self.currentName
 	def set_current_filename(self, name):
@@ -25,7 +45,7 @@ class SaveSystem:
 			self.recent_files.remove(filename)
 			self.recent_files.append("")
 		self.recent_files = [filename]+self.recent_files[:-1]
-		
+		self.save_recent()
 	def get_recent_filename(self, index = None):
 		if(index==None):
 			return self.recent_files
