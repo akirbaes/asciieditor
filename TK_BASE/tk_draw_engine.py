@@ -609,7 +609,6 @@ class App:
 					return setcChar
 				l.grid(column=int(i%16),row=int(i/16))
 				l.bind("<Button-1>",gen(c))
-				print(i)
 		
 class DrawingManager():
 	#Hides the real canvas
@@ -660,7 +659,11 @@ class DrawingManager():
 		def send_event(eventType):
 			def act(event):
 				layer = self.drawing.get_current_layer()
-				self.current_tool.send_event(eventType, event, layer, self.wv, self.hv, (curfg, curbg, curchar))
+				usefg = dofg.get() and curfg.get() or None
+				usebg = dobg.get() and curbg.get() or None
+				usechar = dochar.get() and curchar.get() or None
+				
+				self.current_tool.send_event(eventType, event, layer, self.wv, self.hv, (usefg, usebg, usechar))
 			return act
 		canvas.bind("<Button-1>", send_event("<Button-1>"))
 		canvas.bind("<B1-Motion>", send_event("<B1-Motion>"))
@@ -767,6 +770,7 @@ class DrawingManager():
 			x,y, chardata = draw
 			if(chardata!=None):
 				fgc, bgc, nchar = chardata
+				
 			
 			fgpart = self.fg[x][y]
 			bgpart = self.bg[x][y]

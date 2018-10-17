@@ -108,9 +108,9 @@ class Case():
 		if(isinstance(data,Case)):
 			data = tuple(data)
 		if(isinstance(data,tuple) or isinstance(data,list)):
-			self.set_fg(data[0])
-			self.set_bg(data[1])
-			self.set_char(data[2])
+			self.set_fg(data[0] or self.fg(-1))
+			self.set_bg(data[1] or self.bg(-1))
+			self.set_char(data[2] or self.char(-1))
 		else:
 			raise TypeError("Give a Case or a tuple or a list")
 			
@@ -176,7 +176,7 @@ class Layer():
 	def transparency(self):
 		return (self._transparency_color_,self._transparency_color_," ")
 	def put(self,x,y,data, id = None):
-		#print("Old:",self.cases[x][y].get())
+		#print("Old:",self.cases[x][y].get())		
 		self.cases[x][y].set(data)
 		#print("New:",self.cases[x][y].get())
 		self.notify_parent(("put",x,y, id))

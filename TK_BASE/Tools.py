@@ -65,9 +65,6 @@ class Tool():
 		#Update visuals
 		return
 	
-def tchar(chvars):
-	return (chvars[0].get(), chvars[1].get(), chvars[2].get())
-	
 class Pen(Tool):
 	name = "Pen"
 	cursorstyle = "pencil"
@@ -76,7 +73,7 @@ class Pen(Tool):
 		self.widget = canvas
 		self.widget.config(cursor="pencil")
 		self.handler = tools_handler #when having to change of tool on the fly?
-	def send_event(self,eventType, event,layer=None, char_width = IC.CW, char_height = IC.CH, current_char_variables = None):
+	def send_event(self,eventType, event,layer=None, char_width = IC.CW, char_height = IC.CH, current_char = None):
 		#if(event.widget == concerned_widget):
 		# print("Got event:",event)
 		# for thing in dir(event):
@@ -89,13 +86,13 @@ class Pen(Tool):
 			x,y = event.x//char_width, event.y//char_height
 			self.click_x, self.click_y = x, y
 			self.line_number += 1
-			self.trace(x,y,x,y,layer,tchar(current_char_variables))
+			self.trace(x,y,x,y,layer,(current_char))
 		elif(eventType=="<B1-Motion>"):
 			x,y = event.x//char_width, event.y//char_height
 			#print(self.click_x, self.click_y,",", x,y)
 			#sys.stdout.flush()
 			if(self.has_click()):
-				self.trace(x, y, self.click_x, self.click_y, layer, tchar(current_char_variables))
+				self.trace(x, y, self.click_x, self.click_y, layer, (current_char))
 				self.click_x, self.click_y = x, y
 		elif(eventType=="<ButtonRelease-1>"):
 			self.click_x, self.click_y = None, None
@@ -122,8 +119,8 @@ class Pen(Tool):
 			sys.stdout.flush()
 			if(self.has_click()):
 				if(x == self.click_x or y==self.click_y):
-					curfg, curbg, curchar = current_char_variables
 					fg,bg,c = layer.get(self.click_x, self.click_y)
+					curfg, curbg, curchar = self.handler.current_character_variables
 					curfg.set(fg)
 					curbg.set(bg)
 					curchar.set(c)
