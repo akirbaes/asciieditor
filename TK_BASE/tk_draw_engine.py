@@ -36,6 +36,9 @@ save_engine = SaveSystem()
 root.title(save_engine.get_current_filename())
 #Note: in the future, set the filename to the IMAGE to allow opening several
 
+import sys
+flush = sys.stdout.flush
+
 if(osname == "nt"):
 	fh = 20
 	monofont = font.Font(family="lucida console",size = -fh)
@@ -381,19 +384,23 @@ class App:
 		topFrame = Frame(charactersFrame)
 		topFrame.pack(side=TOP)
 		
-		def validchar(char):
-			return len(char) <= 2 and char in DRAWABLE_CHARACTERS
+		def validchar(char, type):
+			#Replace goes trough: delete (0) then fill (1)
+			#print(type, repr(char))
+			#flush()
+			return len(char) < 2 and char in DRAWABLE_CHARACTERS
 		#https://stackoverflow.com/questions/4140437/interactively-validating-entry-widget-content-in-tkinter/35554720#35554720
 		#topFrame.validchar = validchar
 		#vcmd = topFrame.register(topFrame.validchar,'%P')
 		charEntry = Entry(topFrame,textvariable = curchar, width = 1, validate = "all", font = monofont)
-		charEntry['validatecommand'] = (charEntry.register(validchar), '%P')
+		charEntry['validatecommand'] = (charEntry.register(validchar), '%P', '%d')
 		charEntry.pack(side=LEFT)
 		
 		def reverse_color(color):
+			#https://stackoverflow.com/questions/13998901/generating-a-random-hex-color-in-python
 			return "#%06x"%(int("FFFFFF",16)-int(color[1:],16))
 		
-		fgButton = Button(topFrame,background=curfg.get(),borderwidth=2, width = charEntry.winfo_width(), height = charEntry.winfo_height())
+		fgButton = Button(topFrame,text=" ",background=curfg.get(),borderwidth=2, width = charEntry.winfo_width(), height = charEntry.winfo_height())
 		fgButton.selector = None
 		def createFGSelector():
 			parent = fgButton
@@ -518,7 +525,35 @@ class App:
 		curfg.trace_add("write",updateExampleFG)
 		curbg.trace_add("write",updateExampleBG)
 		
-				
+		
+		paletteButton = Button(charactersFrame,text="↓")
+		paletteButton.pack(side=TOP)
+		paletteFrame = Frame(charactersFrame)
+		paletteFrame.pack(side=TOP)
+		
+		def paletteColor(parent,f,b,c):
+			# f,b,c = fgvar.get(), bgvar.get(), charvar.get()
+			#actually, use my own, made of a label, that can be selected without having focus, and switched 
+			color_button = Button(parent,
+				bg=b,fg=f,text=c,borderwidth=0,font=monofont)
+			color_button.pack(side=LEFT)
+			def delete(*args):
+				color_button.destroy()
+			color_button.bind("<Delete>", delete)
+			def setColor():
+				curfg.set(f)
+				curbg.set(b)
+				curchar.set(c)
+				color_button.focus_set()
+			color_button.config(command=setColor)
+			
+			
+		def putIntoPalette():
+			paletteColor(paletteFrame,curfg.get(),curbg.get(),curchar.get())
+		paletteButton.config(command=putIntoPalette)
+		
+		
+		"""
 		label = Label(charactersFrame,text="Colors")
 		label.pack(side=TOP)
 		col = Frame(charactersFrame)
@@ -526,7 +561,7 @@ class App:
 		for i,c in enumerate(DRAWABLE_CHARACTERS):
 			l = Label(col,text=c)
 			l.grid(column=int(i%16),row=int(i/16))
-
+		"""
 class DrawingManager():
 	#Hides the real canvas
 	#For now it also holds the chars and colors data, but I have to separate view from data later on...
