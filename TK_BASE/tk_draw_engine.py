@@ -592,7 +592,6 @@ class App:
 		
 		col = Frame(charactersFrame)
 		col.pack(side=TOP)
-		print(len(abc))
 		for i,c in enumerate(DRAWABLE_CHARACTERS):
 			c = c.strip()
 			# try:
@@ -613,9 +612,23 @@ class App:
 class DrawingManager():
 	#Hides the real canvas
 	#For now it also holds the chars and colors data, but I have to separate view from data later on...
-	def set_drawing(drawing):
-		self.drawing = drawing
-		#And redo the _init_ parts that require the drawing
+		
+	def update_selector(self, event):
+		if self.current_tool.has_selector and self.current_tool.click_x !=None and self.current_tool.click_y!=None \
+			and self.current_tool.current_x !=None and self.current_tool.current_y!=None:
+			self.c.itemconfig(self.selrect1, state="normal")
+			self.c.itemconfig(self.selrect2, state="normal")
+			x0 = self.current_tool.click_x*fw
+			y0 = self.current_tool.click_y*fh
+			x1 = self.current_tool.current_x*fw
+			y1 = self.current_tool.current_y*fh
+			
+			self.c.coords(self.selrect1, (x0,y0,x1,y1))
+			self.c.coords(self.selrect2, (x0,y0,x1,y1))
+		else:
+			self.c.itemconfig(self.selrect1, state="hidden")
+			self.c.itemconfig(self.selrect2, state="hidden")
+			
 	
 	def __init__(self,canvas, drawing):
 		self.showbox = None #later on I will need to "showbox" several characters instead of one
@@ -667,14 +680,21 @@ class DrawingManager():
 			return act
 		canvas.bind("<Button-1>", send_event("<Button-1>"))
 		canvas.bind("<B1-Motion>", send_event("<B1-Motion>"))
+		canvas.bind("<B1-Motion>", self.update_selector, add="+")
 		canvas.bind("<ButtonRelease-1>", send_event("<ButtonRelease-1>"))
+		canvas.bind("<ButtonRelease-1>", self.update_selector, add="+")
 		
 		canvas.bind("<Button-3>", send_event("<Button-3>"))
 		canvas.bind("<B3-Motion>", send_event("<B3-Motion>"))
+		canvas.bind("<B3-Motion>", self.update_selector, add="+")
 		canvas.bind("<ButtonRelease-3>", send_event("<ButtonRelease-3>"))
+		canvas.bind("<ButtonRelease-3>", self.update_selector, add="+")
 		
 		canvas.bind("<Key>", send_event("<Key>"))
 		
+		
+		self.selrect2 = canvas.create_rectangle((0,0,32,32),outline="blue",width=2,state="hidden")
+		self.selrect1 = canvas.create_rectangle((0,0,32,32),dash=(4,4),outline="white",width=2,state="hidden")
 		canvas.current_after = None
 		# # def clickevent(event):
 			# # self.canvas.focus_set()

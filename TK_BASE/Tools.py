@@ -10,6 +10,7 @@ class Tool():
 	current_y = None
 	cursorstyle = "pencil"
 	widget = None
+	has_selector = False
 	#Common
 	def select_tool_init(self):
 		self.click_x = None
@@ -87,6 +88,7 @@ class Pen(Tool):
 			self.click_x, self.click_y = x, y
 			self.line_number += 1
 			self.trace(x,y,x,y,layer,(current_char))
+			self.current_x,self.current_y = x,y
 		elif(eventType=="<B1-Motion>"):
 			x,y = event.x//char_width, event.y//char_height
 			#print(self.click_x, self.click_y,",", x,y)
@@ -94,23 +96,29 @@ class Pen(Tool):
 			if(self.has_click()):
 				self.trace(x, y, self.click_x, self.click_y, layer, (current_char))
 				self.click_x, self.click_y = x, y
+			self.current_x,self.current_y = x,y
 		elif(eventType=="<ButtonRelease-1>"):
 			self.click_x, self.click_y = None, None
+			self.current_x,self.current_y = None, None
 			
 			
 		#######RIGHT CLICK: colir pick or switch to special selector
 		elif(eventType=="<Button-3>"):
 			x,y = event.x//char_width, event.y//char_height
 			self.click_x, self.click_y = x, y
-			sys.stdout.flush()
+			self.current_x,self.current_y = x,y
 		elif(eventType=="<B3-Motion>"):
 			x,y = event.x//char_width, event.y//char_height
 			
 			if(self.has_click()):
 				if(x == self.click_x or y==self.click_y):
 					self.widget.config(cursor="pencil")
+					self.has_selector = False
+					self.current_x,self.current_y = None, None
 				else:
 					self.widget.config(cursor="crosshair")
+					self.has_selector = True
+					self.current_x,self.current_y = x,y
 				pass
 			#set the cursor lines on the canvas
 		elif(eventType=="<ButtonRelease-3>"):
@@ -134,6 +142,8 @@ class Pen(Tool):
 					#[TODO] something with the Selection
 					#change tool to selection
 				self.click_x, self.click_y = None, None
+				self.has_selector = False
+				self.current_x,self.current_y = None, None
 			
 			
 			
