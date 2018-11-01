@@ -1,5 +1,6 @@
 import interface_constants as IC
 import sys
+flush = sys.stdout.flush
 from numpy import sign
 
 class Tool():
@@ -70,10 +71,12 @@ class Pen(Tool):
 	name = "Pen"
 	cursorstyle = "pencil"
 	line_number = 0
-	def __init__(self, canvas, tools_handler):
+	def __init__(self, canvas, handler):
+		# print("New Pen")
+		# flush()
 		self.widget = canvas
 		self.widget.config(cursor="pencil")
-		self.handler = tools_handler #when having to change of tool on the fly?
+		self.handler = handler #when having to change of tool on the fly?
 	def send_event(self,eventType, event,layer=None, char_width = IC.CW, char_height = IC.CH, current_char = None):
 		#if(event.widget == concerned_widget):
 		# print("Got event:",event)
@@ -136,11 +139,13 @@ class Pen(Tool):
 				else:
 					x0, x1 = min(self.click_x, x), max(self.click_x,x)
 					y0, y1 = min(self.click_y, y), max(self.click_y,y)
-					layer.select_rect(x0, y0, x1-x0, y1-y0)
-					
-					sys.stdout.flush()
-					#[TODO] something with the Selection
-					#change tool to selection
+					rect = layer.select_rect(x0, y0, x1-x0, y1-y0)
+					# print("Received selection:",rect)
+					layer.remove_rect(x0, y0, x1-x0, y1-y0)
+					# print("Changing toool")
+					# sys.stdout.flush()
+					self.handler.change_tool(Mover)
+					self.handler.set_selection(rect, x0, y0)
 				self.click_x, self.click_y = None, None
 				self.has_selector = False
 				self.current_x,self.current_y = None, None
@@ -169,4 +174,58 @@ class Pen(Tool):
 #penselector:
 #either double duty (two variables in pen)
 #or right click will send to a different tool
-
+class Mover(Tool):
+	name = "Mover"
+	flush()
+	"""When moving around, moves the selection"""
+	"""When right click, undo the selection"""
+	cursorstyle = "diamond_cross"
+	nocursorstyle = "X_cursor"
+	def __init__(self, canvas, handler):
+		# print("New Mover")
+		self.widget = canvas
+		self.widget.config(cursor="X_cursor")
+		self.handler = handler
+		self.previous_tool = Pen
+	def send_event(self,eventType, event,layer=None, char_width = IC.CW, char_height = IC.CH, current_char = None):
+	
+		#if(event.widget == concerned_widget):
+		# print("Got event:",event)
+		# for thing in dir(event):
+			# print(thing,repr(event.__getattribute__(thing)), event.__getattribute__(thing))
+		# print(dir(event))
+		
+		########LEFT CLICK: drawing
+		########LEFT CLICK: drawing
+		if(eventType=="<Button-1>"):
+			# print("Got click")
+			if(self.handler.is_in_selection(event.x,event.y)):
+				x,y = event.x//char_width, event.y//char_height
+				self.click_x, self.click_y = x, y
+				self.current_x,self.current_y = x,y
+			else:
+				pass
+		elif(eventType=="<B1-Motion>"):
+			x,y = event.x//char_width, event.y//char_height
+			#print(self.click_x, self.click_y,",", x,y)
+			#sys.stdout.flush()
+			self.current_x,self.current_y = x,y
+			if(self.has_click()):
+				dx, dy = self.current_x - self.click_x, self.current_y - self.click_y
+				self.handler.move_selection_relative(dx,dy)
+				self.click_x, self.click_y = x, y
+		elif(eventType=="<ButtonRelease-1>"):
+			self.click_x, self.click_y = None, None
+			self.current_x,self.current_y = None, None
+		elif(eventType=="<Motion>"):
+			if(self.handler.is_in_selection(event.x,event.y)):
+				self.widget.config(cursor=self.cursorstyle)
+			else:
+				self.widget.config(cursor=self.nocursorstyle)
+			
+			
+		#######RIGHT CLICK: stop it
+		elif(eventType=="<Button-3>"):
+			self.handler.change_tool(self.previous_tool)
+			self.handler.merge_selection(layer)
+			self.handler.remove_selection()

@@ -1,7 +1,8 @@
 from utilities import repr_data
 from utilities import repr_data_bw
+import sys
+flush = sys.stdout.flush
 #In construction, untested yet
-MODIFICATION_COUNTER = 1
 W = 80
 H = 25
 	
@@ -32,67 +33,31 @@ class Case():
 		return Case()
 	def __init__(self,parent,fg="#000000",bg="#000000",char=" "):
 		self.parent = parent
-		self.fg_list = [(0,fg)]
-		self.bg_list = [(0,bg)]
-		self.char_list = [(0,char)]
+		self._fg_ = fg
+		self._bg_ = bg
+		self._char_ = char
 		self.dirty = True
 	def __iter__(self):
 		return (i for i in (self.fg(),self.bg(),self.char()))
 	def get(self):
-		return self.fg(-1), self.bg(-1), self.char(-1)
-	def fg(self, modif = None):
-		if(modif==None):
-			modif = MODIFICATION_COUNTER
-		if(modif==-1):
-			return self.fg_list[-1][1]
-		else:
-			for i in range(len(self.fg_list)-1,0,-1):
-				if(self.fg_list[i][0]<MODIFICATION_COUNTER):
-					return self.fg_list[i][1]
-		return self.fg_list[0][1]
+		return self.fg(), self.bg(), self.char()
+	def fg(self):
+		return self._fg_
 		
-	def char(self, modif = None):
-		if(modif==None):
-			modif = MODIFICATION_COUNTER
-		if(modif==-1):
-			return self.char_list[-1][1]
-		else:
-			for i in range(len(self.char_list)-1,0,-1):
-				if(self.char_list[i][0]<MODIFICATION_COUNTER):
-					return self.char_list[i][1]
-		return self.char_list[0][1]
+	def char(self):
+		return self._char_
 		
-	def bg(self, modif = None):
-		if(modif==None):
-			modif = MODIFICATION_COUNTER
-		if(modif==-1):
-			return self.bg_list[-1][1]
-		else:
-			for i in range(len(self.bg_list)-1,0,-1):
-				if(self.bg_list[i][0]<MODIFICATION_COUNTER):
-					return self.bg_list[i][1]
-		return self.bg_list[0][1]
+	def bg(self):
+		return self._bg_
 		
 	def set_fg(self,fg):
-		while(self.fg_list[-1][0] >= MODIFICATION_COUNTER):
-			self.fg_list.pop()
-		if(self.fg() == fg):
-			return
-		self.fg_list.append((MODIFICATION_COUNTER,fg))
+		self._fg_ = fg
 		
 	def set_bg(self,bg):
-		while(self.bg_list[-1][0] >= MODIFICATION_COUNTER):
-			self.bg_list.pop()
-		if(self.bg() == bg):
-			return
-		self.bg_list.append((MODIFICATION_COUNTER,bg))
+		self._bg_ = bg
 		
 	def set_char(self,char):
-		while(self.char_list[-1][0] >= MODIFICATION_COUNTER):
-			self.char_list.pop()
-		if(self.char() == char):
-			return
-		self.char_list.append((MODIFICATION_COUNTER,char))
+		self._char_ = char
 		
 	def visit(self):
 		self.dirty = False
@@ -108,11 +73,11 @@ class Case():
 		if(isinstance(data,Case)):
 			data = tuple(data)
 		if(isinstance(data,tuple) or isinstance(data,list)):
-			self.set_fg(data[0] or self.fg(-1))
-			self.set_bg(data[1] or self.bg(-1))
-			self.set_char(data[2] or self.char(-1))
+			self.set_fg(data[0] or self.fg())
+			self.set_bg(data[1] or self.bg())
+			self.set_char(data[2] or self.char())
 		else:
-			raise TypeError("Give a Case or a tuple or a list")
+			raise TypeError("Give a Case or a tuple or a list: received "+repr(data))
 			
 		
 	def empty(self):
@@ -123,8 +88,7 @@ class Case():
 		elif(isinstance(other,tuple)):
 			return self.fg(),self.bg(),self.char() == other
 	def __repr__(self):
-		return str(self.get())
-
+		return "Case("+str((self._fg_,self._bg_,self._char_))+")"
 
 class Layer():
 	"""A layer contains W*H Cases
@@ -176,27 +140,41 @@ class Layer():
 	def transparency(self):
 		return (self._transparency_color_,self._transparency_color_," ")
 	def put(self,x,y,data, id = None):
-		#print("Old:",self.cases[x][y].get())		
-		self.cases[x][y].set(data)
+		#print("Old:",self.cases[x][y].get())	
+		if(self._is_inside_(x,y)):
+			self.cases[x][y].set(data)
 		#print("New:",self.cases[x][y].get())
 		self.notify_parent(("put",x,y, id))
 	def putchar(self,x,y,char, id = None):
-		self.cases[x][y].set_char(char)
+		if(self._is_inside_(x,y)):
+			self.cases[x][y].set_char(char)
 		self.notify_parent(("put",x,y, id))
 	def putfg(self,x,y,fg, id = None):
-		self.cases[x][y].set_fg(fg)
+		if(self._is_inside_(x,y)):
+			self.cases[x][y].set_fg(fg)
 		self.notify_parent(("put",x,y, id))
 	def putbg(self,x,y,bg, id = None):
-		self.cases[x][y].set_bg(bg)
+		if(self._is_inside_(x,y)):
+			self.cases[x][y].set_bg(bg)
 		self.notify_parent(("put",x,y, id))
 	def get_bg(self,x,y):
-		return self.cases[x][y].bg()
+		if(self._is_inside_(x,y)):
+			return self.cases[x][y].bg()
+		else:
+			return None
 	def get_fg(self,x,y):
-		return self.cases[x][y].fg()
+		if(self._is_inside_(x,y)):
+			return self.cases[x][y].fg()
+		else:
+			return None
 	def get_char(self,x,y):
-		return self.cases[x][y].char()
+		if(self._is_inside_(x,y)):
+			return self.cases[x][y].char()
+		else:
+			return None
 	def get(self,x,y):
-		return self.cases[x][y].get()
+		if(self._is_inside_(x,y)):
+			return self.cases[x][y].get()
 	def get_nontransparent(self,x,y):
 		if(self.is_transparent(x,y) or self._is_outside_(x,y)):
 			return None
@@ -218,16 +196,18 @@ class Layer():
 			self.allow_transparency = value
 	def select_rect(self,x,y,w,h):
 		#create a rectangular selection from a rectangle
+		# print(x,y,w,h)
+		flush()
 		result = []
 		for px in range(x,x+w):
 			column = []
 			for py in range(y,y+h):
 				if(self._is_inside_(px,py) and not self.is_transparent(px,py)):
-					column.append(self.cases[px][py])
+					column.append(self.get(px,py))
 				else:
 					column.append(None)
 			result.append(column)
-		return result, x,y #optimise: cut the borders outside instead of filling with None
+		return result #optimise: cut the borders outside instead of filling with None
 	def select(self,points):
 		#create a rectangular selection from an iterable of points
 		leftmost = min(points)
@@ -254,13 +234,24 @@ class Layer():
 		return results, leftmostx,upmosty 
 		#optimise: cut the borders outside instead of filling with None (count only isinside points)
 			
-	def remove_rect(self,x,y,w,h):
+	def remove_rect(self,x,y,w,h,id=None):
 		for px in range(x,x+w):
 			for py in range(y,y+h):
-				self.put(px,py,self.transparency)
-		
+				self.put(px,py,self.transparency())
 		self.notify_parent(("rect",x,y,w,h, id))
-	def shift_zone(self,dx,dy):
+	def paste_rect(self,selection,x,y,id=None):
+		# print("Pasting",selection)
+		# print("at",x,y)
+		# flush()
+		w = len(selection)
+		h = len(selection[0])
+		for i in range(w):
+			for j in range(h):
+				sx,sy = x+i, y+j
+				if(self._is_inside_(sx,sy) and selection[i][j]!=None):
+						self.put(sx,sy,selection[i][j])
+		self.notify_parent(("rect",x,y,w,h, id))
+	def shift_zone(self,dx,dy,id=None):
 		#[TODO] test boundaries
 		selection = self.select_rect(self.x,self.y,self.w,self.h)
 		self.remove_rect(self.x,self.y,self.w,self.h)
@@ -270,6 +261,7 @@ class Layer():
 		for x in range(self.x,self.x+self.w):
 			for y in range(self.y,self.y+self.h):
 				self.put(x,y,selection[x-self.x][y-self.y])
+		self.notify_parent(("rect",0,0,self.w,self.h, id))
 		
 class Stack():
 	canvas = None

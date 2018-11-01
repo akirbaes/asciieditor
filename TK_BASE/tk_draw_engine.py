@@ -71,13 +71,9 @@ curtool = StringVar()
 curtool.set("Pen")
 #"Linebits"
 
-def init_pencilcolor(masterframe):
-	topFrame = Frame(masterframe)
-	
 
 class App:
 	def __init__(self,master):
-		self.allTools = []
 		#MAINFRAME
 		mainFrame = Frame(master)
 		mainFrame.pack(fill=BOTH,expand=True)
@@ -612,26 +608,117 @@ class App:
 class DrawingManager():
 	#Hides the real canvas
 	#For now it also holds the chars and colors data, but I have to separate view from data later on...
+	def set_selection(self,selection,x=0,y=0):
+		w = len(selection)
+		h = len(selection[0])
+		self.selection = selection
+		self.selection_x, self.selection_y = x, y
+		for i in range(w):
+			for j in range(h):
+				coords = ((i+x)*FW, (j+y)*FH)
+				bbox = (coords, (coords[0]+FW, coords[1]+FH))
+				if(selection[i][j]!=None):
+					# print("Selection's element:",selection[i][j])
+					# flush()
+					fgcolor, bgcolor, character = selection[i][j]
+					self.c.create_rectangle(bbox,outline="dark slate gray",width=0,fill=bgcolor,tags=("selection"))
+					
+					self.c.create_text(coords,text=character,anchor="nw",font = monofont,fill=fgcolor,tags=("selection"))
+					
+		showbox = self.canvas.find_withtag("selection")
+		# print("Selection of",len(showbox),"elements")
+		# print(showbox)
+		# flush()
+		self.c.coords(self.selrect1, (x*FW,y*FH,(x+w)*FW,(y+h)*FH))
+		self.c.coords(self.selrect2, (x*FW,y*FH,(x+w)*FW,(y+h)*FH))
+	def remove_selection(self):
+		for element in self.canvas.find_withtag("selection"):
+			self.canvas.delete(element)
+		self.selection = None
+		self.c.coords(self.selrect1, (-1,-1,-1,-1))
+		self.c.coords(self.selrect2, (-1,-1,-1,-1))
+		#merge layer
+		#delete selection images
+		#stop selection after loop
+	def merge_selection(self, layer):
+		layer.paste_rect(self.selection, self.selection_x, self.selection_y)
+				
+	def is_in_selection(self, x,y):
+		return list(set(self.canvas.find_withtag("selection")) & set(self.canvas.find_overlapping(x,y,x+1,y+1))) != []
+	def move_selection_relative(self, dx, dy):
+		for element in self.canvas.find_withtag("selection"):
+			self.canvas.move(element, dx*FW, dy*FH)
+		self.selection_x += dx
+		self.selection_y += dy
+		self.canvas.move(self.selrect1, dx*FW, dy*FH)
+		self.canvas.move(self.selrect2, dx*FW, dy*FH)
+	def change_tool(self,newtooltype):
+		self.current_tool = newtooltype(self.canvas,self)
 		
 	def update_selector(self, event):
-		if self.current_tool.has_selector and self.current_tool.click_x !=None and self.current_tool.click_y!=None \
+		if self.current_tool.has_selector:
+			if self.current_tool.click_x !=None and self.current_tool.click_y!=None \
 			and self.current_tool.current_x !=None and self.current_tool.current_y!=None:
-			self.c.itemconfig(self.selrect1, state="normal")
-			self.c.itemconfig(self.selrect2, state="normal")
-			x0 = self.current_tool.click_x*fw
-			y0 = self.current_tool.click_y*fh
-			x1 = self.current_tool.current_x*fw
-			y1 = self.current_tool.current_y*fh
-			
-			self.c.coords(self.selrect1, (x0,y0,x1,y1))
-			self.c.coords(self.selrect2, (x0,y0,x1,y1))
-		else:
-			self.c.itemconfig(self.selrect1, state="hidden")
-			self.c.itemconfig(self.selrect2, state="hidden")
-			
-	
+				#Just trying to get the selection rectangle visual updated more quickly, didn't work
+				#Reaching the limitations of Tkinter pretty quickly here...
+				# self.c.itemconfig(self.selrect1, state="normal")
+				# self.c.itemconfig(self.selrect2, state="normal")
+				# self.c.itemconfig(self.selline1a, state="normal")
+				# self.c.itemconfig(self.selline2a, state="normal")
+				# self.c.itemconfig(self.selline3a, state="normal")
+				# self.c.itemconfig(self.selline4a, state="normal")
+				# self.c.itemconfig(self.selline1b, state="normal")
+				# self.c.itemconfig(self.selline2b, state="normal")
+				# self.c.itemconfig(self.selline3b, state="normal")
+				# self.c.itemconfig(self.selline4b, state="normal")
+				x0 = self.current_tool.click_x*fw
+				y0 = self.current_tool.click_y*fh
+				x1 = self.current_tool.current_x*fw
+				y1 = self.current_tool.current_y*fh
+				x0,x1 = min(x0,x1), max(x0,x1)
+				y0,y1 = min(y0,y1), max(y0,y1)
+				# self.c.update_idletasks()
+				# self.c.coords(self.selline1a, (x0,y0,x1,y0))
+				# self.c.coords(self.selline1b, (x0,y0,x1,y0))
+				# self.c.update_idletasks()
+				# self.c.coords(self.selline2a, (x1,y0,x1,y1))
+				# self.c.coords(self.selline2b, (x1,y0,x1,y1))
+				# self.c.update_idletasks()
+				# self.c.coords(self.selline3a, (x1,y1,x0,y1))
+				# self.c.coords(self.selline3b, (x1,y1,x0,y1))
+				# self.c.update_idletasks()
+				# self.c.coords(self.selline4a, (x0,y1,x0,y0))
+				# self.c.coords(self.selline4b, (x0,y1,x0,y0))
+				# self.c.update_idletasks()
+				
+				
+				self.c.update_idletasks()
+				# if(self.c.bbox(self.selrect1))!=(x0-1,y0-1,x1+1,y1+1):
+				self.c.coords(self.selrect1, (x0,y0,x1,y1))
+				self.c.coords(self.selrect2, (x0,y0,x1,y1))
+					# if(self.c.bbox(self.selrect1))!=(x0-1,y0-1,x1+1,y1+1):
+						# print("Update selector:rectangle does not correspond",self.c.bbox(self.selrect1),(x0,y0,x1,y1))
+						# flush()
+				self.c.update_idletasks()
+			else:
+				self.c.coords(self.selrect1, (-1,-1,-1,-1))
+				self.c.coords(self.selrect2, (-1,-1,-1,-1))
+				# self.c.itemconfig(self.selrect1, state="hidden")
+				# self.c.itemconfig(self.selrect2, state="hidden")
+				# self.c.itemconfig(self.selline1a, state="hidden")
+				# self.c.itemconfig(self.selline2a, state="hidden")
+				# self.c.itemconfig(self.selline3a, state="hidden")
+				# self.c.itemconfig(self.selline4a, state="hidden")
+				# self.c.itemconfig(self.selline1b, state="hidden")
+				# self.c.itemconfig(self.selline2b, state="hidden")
+				# self.c.itemconfig(self.selline3b, state="hidden")
+				# self.c.itemconfig(self.selline4b, state="hidden")
+		pass
+	def get_current_tool(self):
+		return self.current_tool
 	def __init__(self,canvas, drawing):
-		self.showbox = None #later on I will need to "showbox" several characters instead of one
+		self.selection = None
+		self.selection_x, self.selection_y = 0, 0
 		self.canvas_mx = 0;
 		self.canvas_my = 0;
 		self.colorsbackup = []
@@ -661,10 +748,21 @@ class DrawingManager():
 				self.bg[i][j] = self.c.create_rectangle(bbox,outline="dark slate gray",width=0,fill=BLACK)
 				self.fg[i][j] = self.c.create_text(p1,anchor="nw",font = monofont,fill=BLACK)
 				
-		self.selectx = 0;
-		self.selecty = 0;
-		self.selection = []
-		self.selecting = False;
+		# self.selline1a = canvas.create_line((0,0,32,0),fill="blue",width=2,state="hidden")
+		# self.selline2a = canvas.create_line((0,0,0,32),fill="blue",width=2,state="hidden")
+		# self.selline3a = canvas.create_line((32,0,32,32),fill="blue",width=2,state="hidden")
+		# self.selline4a = canvas.create_line((0,32,32,32),fill="blue",width=2,state="hidden")
+		# self.selline1b = canvas.create_line((0,0,32,0),dash=(4,4),fill="white",width=2,state="hidden")
+		# self.selline2b = canvas.create_line((0,0,0,32),dash=(4,4),fill="white",width=2,state="hidden")
+		# self.selline3b = canvas.create_line((32,0,32,32),dash=(4,4),fill="white",width=2,state="hidden")
+		# self.selline4b = canvas.create_line((0,32,32,32),dash=(4,4),fill="white",width=2,state="hidden")
+		self.selrect2 = canvas.create_rectangle((0,0,32,32),outline="blue",width=2,state="hidden")
+		self.selrect1 = canvas.create_rectangle((0,0,32,32),dash=(4,4),outline="white",width=2,state="hidden")
+		self.c.itemconfig(self.selrect2, state="normal")
+		self.c.itemconfig(self.selrect1, state="normal")
+		self.c.coords(self.selrect1, (-1,-1,-1,-1))
+		self.c.coords(self.selrect2, (-1,-1,-1,-1))
+		
 		self.typing = False;
 		
 		canvas.bind("<Enter>", lambda event: canvas.focus_set())
@@ -676,11 +774,12 @@ class DrawingManager():
 				usebg = dobg.get() and curbg.get() or None
 				usechar = dochar.get() and curchar.get() or None
 				
-				self.current_tool.send_event(eventType, event, layer, self.wv, self.hv, (usefg, usebg, usechar))
+				self.get_current_tool().send_event(eventType, event, layer, self.wv, self.hv, (usefg, usebg, usechar))
 			return act
 		canvas.bind("<Button-1>", send_event("<Button-1>"))
 		canvas.bind("<B1-Motion>", send_event("<B1-Motion>"))
 		canvas.bind("<B1-Motion>", self.update_selector, add="+")
+		canvas.bind("<Motion>", send_event("<Motion>"))
 		canvas.bind("<ButtonRelease-1>", send_event("<ButtonRelease-1>"))
 		canvas.bind("<ButtonRelease-1>", self.update_selector, add="+")
 		
@@ -693,8 +792,7 @@ class DrawingManager():
 		canvas.bind("<Key>", send_event("<Key>"))
 		
 		
-		self.selrect2 = canvas.create_rectangle((0,0,32,32),outline="blue",width=2,state="hidden")
-		self.selrect1 = canvas.create_rectangle((0,0,32,32),dash=(4,4),outline="white",width=2,state="hidden")
+		
 		canvas.current_after = None
 		# # def clickevent(event):
 			# # self.canvas.focus_set()
