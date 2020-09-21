@@ -200,6 +200,7 @@ class App:
         self.button_oldcolor = None
         self.allTools=[]
         def changeTool(newtool):
+            #Input: Tool class that has a "name" entry with the tool name
             def ct():
                 self.canvas_drawing.change_tool(newtool)
                 flush()
@@ -218,12 +219,12 @@ class App:
             return ct
             
         def addToolButton(tool):
-            command=changeTool(tool)
-            butool=Button(toolsFrame,text=tool.name,command=command)
+            butool=Button(toolsFrame,text=tool.name,command=changeTool(tool))
             self.allTools.append(butool)
             butool.pack(side=LEFT,anchor = "w")
-        addToolButton(Pen)
-        addToolButton(Text)
+        for tool in ALLTOOLS:
+            addToolButton(tool)
+        changeTool(Pen)()
         
         # # self.drawTool = Button(toolsFrame,text="Linebits", 
         # # command = changeTool("Linebits")) #,state="disabled"
@@ -350,7 +351,8 @@ class App:
         self.gridbutton.config(command = showgrid)
         self.gridbutton.pack(side=BOTTOM,anchor = "w")
         
-        
+        """
+        #Turned into a tool
         self.textset = False
         self.textbutton = Button(goptionsFrame,text="Ins.")
         def textMode():
@@ -363,8 +365,8 @@ class App:
             print("Text mode",("Disabled","Enabled")[self.textset])
         self.textbutton.config(command = textMode)
         self.textbutton.pack(side=BOTTOM,anchor = "w")
-        self.textbutton.invoke()
-        CreateToolTip(self.textbutton,"Insert mode on/off")
+        #self.textbutton.invoke()
+        CreateToolTip(self.textbutton,"Insert mode on/off")"""
         
         #Modification modes
         modeFrame = Frame(toolsFrame)
@@ -860,9 +862,9 @@ class DrawingManager():
                         # # else:
                             # # self.warpMouse(1,0)
         # # canvas.bind("<Key>",typeachar)
-        
+    """
     def textmode(self,textset):
-        self.istextmode = textset
+        self.istextmode = textset"""
         
     def showOutlines(self,do):
         for line in self.bg:

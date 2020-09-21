@@ -145,7 +145,7 @@ class Pen(Tool):
                     # print("Changing toool")
                     # sys.stdout.flush()
                     self.handler.change_tool(Mover)
-                    self.handler.get_current_tool().working_layer=layer
+                    self.handler.get_current_tool().initial_layer=layer
                     self.handler.set_selection(rect, x0, y0)
                 self.click_x, self.click_y = None, None
                 self.has_selector = False
@@ -208,7 +208,8 @@ class Mover(Tool):
             x,y = event.x//char_width, event.y//char_height
             #print(self.click_x, self.click_y,",", x,y)
             #sys.stdout.flush()
-            self.left_click(x,y)
+            self.current_x, self.current_y = x, y
+            #self.left_click(x,y,self.initial_layer)
             if(self.has_click()):
                 dx, dy = self.current_x - self.click_x, self.current_y - self.click_y
                 self.handler.move_selection_relative(dx,dy)
@@ -228,11 +229,13 @@ class Mover(Tool):
             self.handler.change_tool(self.previous_tool)
             self.handler.merge_selection(layer)
             self.handler.remove_selection()
+            self.initial_layer=None
             
     def __del__(self):
-        self.handler.change_tool(self.previous_tool)
-        self.handler.merge_selection(None) #Update when Layer are implemented [TODO]
-        self.handler.remove_selection()
+        #self.handler.change_tool(self.previous_tool) #No: if deleted, probably because changed tool
+        if(self.initial_layer!=None):
+            self.handler.merge_selection(self.initial_layer) #Update when Layer are implemented [TODO]
+            self.handler.remove_selection()
         
 class Text(Tool):
     name = "Text"
@@ -255,3 +258,7 @@ class Text(Tool):
             if(len(c)==1 and self.has_click()):
                 layer.put(self.click_x,self.click_y,current_char[0:2]+(c,), id = (Text.name,Text.click_number))
                 self.click_x+=1
+                
+                
+
+ALLTOOLS=[Pen,Text]
